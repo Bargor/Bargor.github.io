@@ -25,59 +25,59 @@ I set up few tests on which I will do the comparisons:
     
 2. Multiply test:
     
-```c++
-for (auto _ : state) {
-    benchmark::ClobberMemory();
-    res = testData[0] * testData[1];
-    benchmark::ClobberMemory();
-}
-```
+    ```c++
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] * testData[1];
+        benchmark::ClobberMemory();
+    }
+    ```
         
 3. Multiply by scalar:
 
-```c++    
-for (auto _ : state) {
-    benchmark::ClobberMemory();
-    res = testData[0] * testData[1].y;
-    benchmark::ClobberMemory();
-}
-```       
+    ```c++    
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] * testData[1].y;
+        benchmark::ClobberMemory();
+    }
+    ```       
 
 4. Compute 1 test:
 
-```c++    
-glm::vec4 compute_1(float a, float b)
-{
-    glm::vec4 const av(a, b, b, a);
-    glm::vec4 const bv(a, b, a, b);
+    ```c++    
+    glm::vec4 compute_1(float a, float b)
+    {
+        glm::vec4 const av(a, b, b, a);
+        glm::vec4 const bv(a, b, a, b);
 
-    glm::vec4 const cv(bv * av);
-    glm::vec4 const dv(av + cv);
+        glm::vec4 const cv(bv * av);
+        glm::vec4 const dv(av + cv);
 
-    return dv;
-}
-```
+        return dv;
+    }
+    ```
     
 5. Compute 2 test:
 
-```c++    
-glm::vec4 compute_2(float a, float b)
-{
-    glm::vec4 const c(b * a);
-    glm::vec4 const d(a + c);
+    ```c++    
+    glm::vec4 compute_2(float a, float b)
+    {
+        glm::vec4 const c(b * a);
+        glm::vec4 const d(a + c);
 
-    return d;
-}
-```
+        return d;
+    }
+    ```
     
 6. Compute 3 test:
 
-```c++    
-glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
-{
-    return a * b + a * b;
-}
-```
+    ```c++    
+    glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
+    {
+        return a * b + a * b;
+    }
+    ```
 
 ### 1. GLM
     
