@@ -81,26 +81,26 @@ glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
 
 ### 1. GLM
     
-    |                  | MSVC    | GCC     | CLANG   |
-    | ---------------- | ------- | ------- | ------- |
-    | Add              | 5.09 ns | 3.03 ns | 1.90 ns |
-    | Multiply         | 5.31 ns | 3.02 ns | 1.86 ns |
-    | Multiply scalar  | 4.43 ns | 2.01 ns | 1.39 ns |
-    | Compute 1        | 2.98 ns | 1.00 ns | 1.76 ns |
-    | Compute 2        | 2.45 ns | 1.00 ns | 1.18 ns |
-    | Compute 3        | 5.96 ns | 3.02 ns | 1.85 ns |
+|                  | MSVC    | GCC     | CLANG   |
+| ---------------- | ------- | ------- | ------- |
+| Add              | 5.09 ns | 3.03 ns | 1.90 ns |
+| Multiply         | 5.31 ns | 3.02 ns | 1.86 ns |
+| Multiply scalar  | 4.43 ns | 2.01 ns | 1.39 ns |
+| Compute 1        | 2.98 ns | 1.00 ns | 1.76 ns |
+| Compute 2        | 2.45 ns | 1.00 ns | 1.18 ns |
+| Compute 3        | 5.96 ns | 3.02 ns | 1.85 ns |
     
-    Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and thats why its winning the add and multiply tests on benchmark.
+Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and thats why its winning the add and multiply tests on benchmark.
 
-    ### 2. GLM SIMD
+### 2. GLM SIMD
 
-    ### 3. Eigen
+### 3. Eigen
 
-    ### 4. Blaze
+### 4. Blaze
 
-    ### 5. Mathfu
+### 5. Mathfu
 
-    ### 6. Mango
+### 6. Mango
 
 ## Swizzle tests
 
