@@ -15,13 +15,13 @@ I set up few tests on which I will do the comparisons:
     
 1. Addition test:
     
-```c++
-for (auto _ : state) {
-    benchmark::ClobberMemory();
-    res = testData[0] + testData[1];
-    benchmark::ClobberMemory();
-}
-```
+    ```c++
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] + testData[1];
+        benchmark::ClobberMemory();
+    }
+    ```
     
 2. Multiply test:
     
