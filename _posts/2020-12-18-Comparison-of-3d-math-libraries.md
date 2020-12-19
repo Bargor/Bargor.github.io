@@ -11,7 +11,7 @@ For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and
 
 ## 1. Vector4 tests
 
-    I set up few tests on which I will do the comparisons:
+I set up few tests on which I will do the comparisons:
     
     1. Addition test:
     
