@@ -15,11 +15,11 @@ I set up few tests on which I will do the comparisons:
     
 1. Addition test:
     
-    for (auto _ : state) {
-        benchmark::ClobberMemory();
-        res = testData[0] + testData[1];
-        benchmark::ClobberMemory();
-    }
+        for (auto _ : state) {
+            benchmark::ClobberMemory();
+            res = testData[0] + testData[1];
+            benchmark::ClobberMemory();
+        }
     
 2. Multiply test:
     
@@ -67,7 +67,7 @@ I set up few tests on which I will do the comparisons:
         return a * b + a * b;
     }
 
-    ### 1. GLM
+### 1. GLM
     
     |                  | MSVC    | GCC     | CLANG   |
     | ---------------- | ------- | ------- | ------- |
@@ -90,7 +90,7 @@ I set up few tests on which I will do the comparisons:
 
     ### 6. Mango
 
-## 2. Swizzle tests
+## Swizzle tests
 
-## 3. Martix 4x4 tests
+## Martix 4x4 tests
 
