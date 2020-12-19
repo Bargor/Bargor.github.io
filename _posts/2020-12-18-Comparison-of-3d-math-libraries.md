@@ -9,11 +9,11 @@ I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using googl
 
 For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and Eigen and Blaze as state of the art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. for other libraries I'm not very familiar with them so I took default settings. Tests were made on two processor I had access to: old Xeon E5450 and i7-8850H, on second one I also run benchmarks compiled with AVX2 instrucions where is was possible.
 
-## 1. Vector4 tests
+## Vector4 tests
 
 I set up few tests on which I will do the comparisons:
     
-    1. Addition test:
+1. Addition test:
     
         for (auto _ : state) {
             benchmark::ClobberMemory();
@@ -21,7 +21,7 @@ I set up few tests on which I will do the comparisons:
             benchmark::ClobberMemory();
         }
     
-    2. Multiply test:
+2. Multiply test:
     
         for (auto _ : state) {
             benchmark::ClobberMemory();
@@ -29,7 +29,7 @@ I set up few tests on which I will do the comparisons:
             benchmark::ClobberMemory();
         }
         
-    3. Multiply by scalar:
+3. Multiply by scalar:
     
         for (auto _ : state) {
             benchmark::ClobberMemory();
@@ -37,7 +37,7 @@ I set up few tests on which I will do the comparisons:
             benchmark::ClobberMemory();
         }
         
-    4. Compute 1 test:
+4. Compute 1 test:
     
     glm::vec4 compute_1(float a, float b)
     {
@@ -51,7 +51,7 @@ I set up few tests on which I will do the comparisons:
         return dv;
     }
     
-    5. Compute 2 test:
+5. Compute 2 test:
     
     glm::vec4 compute_2(float a, float b)
     {
@@ -61,7 +61,7 @@ I set up few tests on which I will do the comparisons:
         return d;
     }
     
-    6. Compute 3 test:
+6. Compute 3 test:
     
     glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
     {
