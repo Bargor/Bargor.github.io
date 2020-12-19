@@ -15,33 +15,32 @@ I set up few tests on which I will do the comparisons:
     
 1. Addition test:
     
-        for (auto _ : state) {
-            benchmark::ClobberMemory();
-            res = testData[0] + testData[1];
-            benchmark::ClobberMemory();
-        }
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] + testData[1];
+        benchmark::ClobberMemory();
+    }
     
 2. Multiply test:
     
-        for (auto _ : state) {
-            benchmark::ClobberMemory();
-            res = testData[0] * testData[1];
-            benchmark::ClobberMemory();
-        }
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] * testData[1];
+        benchmark::ClobberMemory();
+    }
         
 3. Multiply by scalar:
     
-        for (auto _ : state) {
-            benchmark::ClobberMemory();
-            res = testData[0] * testData[1].y;
-            benchmark::ClobberMemory();
-        }
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] * testData[1].y;
+        benchmark::ClobberMemory();
+    }
         
 4. Compute 1 test:
     
     glm::vec4 compute_1(float a, float b)
     {
-
         glm::vec4 const av(a, b, b, a);
         glm::vec4 const bv(a, b, a, b);
 
