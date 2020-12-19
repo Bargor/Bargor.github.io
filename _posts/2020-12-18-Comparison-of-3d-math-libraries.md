@@ -150,5 +150,26 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 ## Swizzle tests
 
+### 1. GLM
+
+| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
+| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
+| Swizzle test 1      | 5.55 ns    | 2.40 ns    | 2.59 ns    | Swizzle test 1      | 1.93 ns    | -          | 1.10 ns    |
+| Swizzle test 2      | 7.21 ns    | 2.39 ns    | 3.58 ns    | Swizzle test 2      | 1.83 ns    | -          | 1.87 ns    |
+
+### 2. GLM SIMD
+
+| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
+| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
+| Swizzle test 1      | 4.10 ns    | 2.00 ns    | 2.24 ns    | Swizzle test 1      | 1.63 ns    | -          | 1.24 ns    |
+| Swizzle test 2      | 3.35 ns    | 1.34 ns    | 1.96 ns    | Swizzle test 2      | 1.06 ns    | -          | 1.14 ns    |
+
+### 3. Mango
+
+| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
+| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
+| Swizzle test 1      | 4.21 ns    | 2.01 ns    | 2.10  ns   | Swizzle test 1      |  1.08 ns   | -          | 1.26 ns    |
+| Swizzle test 2      | 3.31 ns    | 1.34 ns    | 1.83  ns   | Swizzle test 2      | 0.880 ns   | -          | 1.25 ns    |
+
 ## Martix 4x4 tests
 
