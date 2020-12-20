@@ -173,6 +173,8 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 ## Martix 4x4 tests
 
+Mango library doesn't support adding matrices, so this result isn't available.
+
 ### 1. GLM
 
 | Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
@@ -212,6 +214,5 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 | Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
 | ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 15.2 ns    | 9.68 ns    | 15.9  ns   | Add        | 4.30 ns    | -          | 4.74 ns    |
-| Multiply    | 27.3 ns    | 18.5 ns    | 31.1  ns   | Multiply   | 10.8 ns    | -          | 10.7 ns    |
+| Multiply    | 15.2 ns    | 9.68 ns    | 15.9  ns   | Add        | 4.30 ns    | -          | 4.74 ns    |
 
