@@ -173,3 +173,45 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 ## Martix 4x4 tests
 
+### 1. GLM
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 18.3 ns    | 11.7 ns    | 9.26  ns   | Add        | 10.3 ns    | -          | 1.02 ns    |
+| Multiply    | 68.7 ns    | 11.7 ns    | 32.8  ns   | Multiply   | 21.8 ns    | -          | 7.01 ns    |
+
+### 2. GLM SIMD
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 5.47 ns    | 3.03 ns    | 4.63  ns   | Add        | 5.81 ns    | -          | 1.74 ns    |
+| Multiply    | 14.8 ns    | 7.18 ns    | 17.4  ns   | Multiply   | 9.33 ns    | -          | 3.82 ns    |
+
+### 3. Eigen
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 5.97 ns    | 3.17 ns    | 4.52  ns   | Add        | 0.955 ns   | -          | 0.867 ns   |
+| Multiply    | 18.1 ns    | 8.55 ns    | 15.0  ns   | Multiply   |  8.06 ns   | -          |  4.47 ns   |
+
+### 4. Blaze
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 10.2 ns    | 3.17 ns    | 6.71  ns   | Add        | 3.11 ns    | -          | 1.79 ns    |
+| Multiply    | 24.5 ns    | 8.66 ns    | 19.3  ns   | Multiply   | 18.4 ns    | -          | 6.07 ns    |
+
+### 5. Mathfu
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 12.3 ns    | 3.17 ns    | 5.08  ns   | Add        | 7.41 ns    | -          | 1.63 ns    |
+| Multiply    | 32.9 ns    | 43.1 ns    | 50.9  ns   | Multiply   | 16.4 ns    | -          | 21.3 ns    |
+
+### 6. Mango
+
+| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
+| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| Add         | 15.2 ns    | 9.68 ns    | 15.9  ns   | Add        | 4.30 ns    | -          | 4.74 ns    |
+| Multiply    | 27.3 ns    | 18.5 ns    | 31.1  ns   | Multiply   | 10.8 ns    | -          | 10.7 ns    |
+
