@@ -104,6 +104,19 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 | Compute 2           | 1.53 ns    | 1.00 ns    | 1.18 ns    | Compute 2           | 0.578 ns   | -          | 0.503 ns   |
 | Compute 3           | 2.10 ns    | 1.00 ns    | 1.02 ns    | Compute 3           | 0.535 ns   | -          | 0.519 ns   |
 
+This implementation of simd operations is based on often seen implementation that exploits type-punning:
+
+    ```c++    
+    struct vec4 {
+        union {
+            float x,y,z,w;
+            __m128 data;
+        };
+    };
+    ```
+    
+Unfortunately this is UB in C++. In fact all compilers support this technique properly, and there are no errors it is interesting how it is influencing optimization of such code.
+
 ### 3. Eigen
 
 | Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
@@ -141,12 +154,14 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 | Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
 | ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 3.48 ns    | 1.00 ns    | 1.08 ns    | Add                 | 0.600 ns   | -          | 0.452 ns   |
+| Add                 | 1.40 ns    | 1.00 ns    | 1.08 ns    | Add                 | 0.600 ns   | -          | 0.452 ns   |
 | Multiply            | 1.35 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.506 ns   | -          | 0.419 ns   |
 | Multiply scalar     | 1.01 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.510 ns   | -          | 0.433 ns   |
 | Compute 1           | 2.91 ns    | 1.00 ns    | 2.36 ns    | Compute 1           | 1.27 ns    | -          |  1.02 ns   |
 | Compute 2           | 2.02 ns    | 1.00 ns    | 1.22 ns    | Compute 2           | 0.589 ns   | -          | 0.502 ns   |
 | Compute 3           | 1.89 ns    | 1.00 ns    | 1.01 ns    | Compute 3           | 0.525 ns   | -          | 0.528 ns   |
+
+For multiply, multiply scalar tests Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC.
 
 ## Swizzle tests
 
@@ -161,7 +176,7 @@ Swizzle test code looks like this:
     }
     ```
 
-2.Swizzle test 2:
+2. Swizzle test 2:
 
     ```c++    
     inline glm::vec4 test_swizzle_2(glm::vec4 a, glm::vec4 b) 
