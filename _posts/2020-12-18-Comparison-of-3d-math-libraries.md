@@ -5,7 +5,7 @@ title: Comparison of 3d Math libraries
 
 In this article I want to compare performance of basic operations of different popular (and less popular) math libraries. I will focus on stuff related to 3d math used in geometry processing, so I tested Vector4 and 4x4 Matrix implementations. For GLM and Mango library I also tested swizzle implementations as this libraries have this feature.
 
-I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting because we can see how each implementation compiles on different compilers.
+I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting because we can see how each implementation compiles on different compilers. Important thing to note: MSVC and Clang tests were run on Windows 10, and Gcc tests on Ubuntu 20.04, it seems that on Linux measuring limit is 1 nanosecond, so this results are really not accurate and comparable with the resuts from Windows. I believe this is issue on this CPU (Xeon E8450) because while running on CI (Travis) such issue didn't occur and those results (between GCC and Clang) are comparable.
 
 For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and Eigen and Blaze as state of the art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. for other libraries I'm not very familiar with them so I took default settings. Tests were made on two processor I had access to: old Xeon E5450 and i7-8850H, on second one I also run benchmarks compiled with AVX2 instrucions where is was possible.
 
@@ -150,6 +150,26 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 ## Swizzle tests
 
+Swizzle test code looks like this: 
+
+1. Swizzle test 1:
+
+    ```c++    
+    inline glm::vec4 test_swizzle_1(glm::vec4 a, glm::vec4 b, glm::vec4 c) 
+    {
+        return a.wwww() * b.xxyy() + (c.xxzz() - a).zzzz() * b.w;
+    }
+    ```
+
+2.Swizzle test 2:
+
+    ```c++    
+    inline glm::vec4 test_swizzle_2(glm::vec4 a, glm::vec4 b) 
+    {
+        return a.xyyz() * b.wxxw() + a * b.w;
+    }
+    ```
+
 ### 1. GLM
 
 | Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
@@ -173,7 +193,28 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 ## Martix 4x4 tests
 
-Mango library doesn't support adding matrices, so this result isn't available.
+For matrices I tested add and multiply operations. From 3d math graphics library perhaps most interesting operation for us is matrix multiplication. After a while of thinking maybe operation like ```transpose()``` would also interesting or specialized methods for constructing projection or view matrices would also be worth testing. I don't know if general purpose libraries like Eigen or Blaze support that out of the box.
+Mango library doesn't support adding matrices, so this result isn't available.  Code for tests looks lithe this:
+
+1. Add test:
+
+    ```c++    
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] + testData[1];
+        benchmark::ClobberMemory();
+    }
+    ```
+    
+1. Multiply test:
+
+    ```c++    
+    for (auto _ : state) {
+        benchmark::ClobberMemory();
+        res = testData[0] * testData[1];
+        benchmark::ClobberMemory();
+    }
+    ```
 
 ### 1. GLM
 
