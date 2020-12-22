@@ -41,23 +41,7 @@ I set up few tests on which I will do the comparisons:
         res = testData[0] * testData[1].y;
         benchmark::ClobberMemory();
     }
-    ```       
-
-4. Compute 1 test:
-
-    ```c++    
-    glm::vec4 compute_1(float a, float b)
-    {
-        glm::vec4 const av(a, b, b, a);
-        glm::vec4 const bv(a, b, a, b);
-
-        glm::vec4 const cv(bv * av);
-        glm::vec4 const dv(av + cv);
-
-        return dv;
-    }
-    ```
-    
+    ```         
 5. Compute 2 test:
 
     ```c++    
@@ -163,12 +147,12 @@ Unfortunately this is UB in C++. In fact all compilers support this technique pr
 
 For multiply and tests GLM SIMD, Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
 
-    ```assembly    
-    mov         rax,qword ptr [testData]  
-    movups      xmm0,xmmword ptr [rax+10h]  
-    mulps       xmm0,xmmword ptr [rax]  
-    movaps      xmmword ptr [res],xmm0 
-    ```
+```assembly    
+mov         rax,qword ptr [testData]  
+movups      xmm0,xmmword ptr [rax+10h]  
+mulps       xmm0,xmmword ptr [rax]  
+movaps      xmmword ptr [res],xmm0 
+```
     
 Also GLM SIMD and Eigen have best code for multiply scalar test:
     
@@ -184,104 +168,130 @@ Mango and Blaze implementations results in extra instruction which cost us a bit
 
 Mango:
 
-    ```assembly    
-    mov         rax,qword ptr [testData]  
-    movups      xmm0,xmmword ptr [rax+10h]  
-    shufps      xmm0,xmm0,55h  
-    shufps      xmm0,xmm0,0  
-    mulps       xmm0,xmmword ptr [rax]  
-    movaps      xmmword ptr [res],xmm0
-    ```
+```assembly    
+mov         rax,qword ptr [testData]  
+movups      xmm0,xmmword ptr [rax+10h]  
+shufps      xmm0,xmm0,55h  
+shufps      xmm0,xmm0,0  
+mulps       xmm0,xmmword ptr [rax]  
+movaps      xmmword ptr [res],xmm0
+```
     
 Blaze:
     
-    ```assembly  
-    mov         rax,qword ptr [testData]  
-    movss       xmm1,dword ptr [rax+14h]  
-    shufps      xmm1,xmm1,0  
-    movups      xmm0,xmmword ptr [rax]  
-    mulps       xmm0,xmm1  
-    movaps      xmmword ptr [res],xmm0  
-    ```
+```assembly  
+mov         rax,qword ptr [testData]  
+movss       xmm1,dword ptr [rax+14h]  
+shufps      xmm1,xmm1,0  
+movups      xmm0,xmmword ptr [rax]  
+mulps       xmm0,xmm1  
+movaps      xmmword ptr [res],xmm0  
+```
     
 GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresing.
 
 GCC didn't vectorized GLM code, for GLM SIMD and Mango produced:
 
-    ```assembly  
-    mov    0x10(%rsp),%rax
-    movaps (%rax),%xmm1
-    movaps 0x10(%rax),%xmm0
+```assembly  
+mov    0x10(%rsp),%rax
+movaps (%rax),%xmm1
+movaps 0x10(%rax),%xmm0
 
-    sub    $0x1,%rbx
-    jne    0x55555555e6c0 <vec4_mult_simd(benchmark::State&)+144>
-    
-    mulps  %xmm0,%xmm1
-    movaps %xmm1,(%rsp)
-    ```
+sub    $0x1,%rbx
+jne    0x55555555e6c0 <vec4_mult_simd(benchmark::State&)+144>
+
+mulps  %xmm0,%xmm1
+movaps %xmm1,(%rsp)
+```
     
 Interesting thing is to have loop control instructions in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). It seems to be best code overall.
     
 Alternative assembly was produces by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
  
-    ```assembly  
-    mov    (%rsp),%rax
-    movaps 0x10(%rax),%xmm0
-    mulps  (%rax),%xmm0
-    movaps %xmm0,0x20(%rsp)
-    ```
+```assembly  
+mov    (%rsp),%rax
+movaps 0x10(%rax),%xmm0
+mulps  (%rax),%xmm0
+movaps %xmm0,0x20(%rsp)
+```
 
-    ```assembly 
-    mov    (%rsp),%rax
-    movss  0x14(%rax),%xmm0
-    shufps $0x0,%xmm0,%xmm0
-    mulps  (%rax),%xmm0
-    movaps %xmm0,0x20(%rsp)
-    ```
+```assembly 
+mov    (%rsp),%rax
+movss  0x14(%rax),%xmm0
+shufps $0x0,%xmm0,%xmm0
+mulps  (%rax),%xmm0
+movaps %xmm0,0x20(%rsp)
+```
 
-Clang done best job overall, for vanilla GLM it vectorized it to following codes:
+Clang done best job overall, for vanilla GLM was vectorized to following codes:
 
-    ```assembly  
-    mov         rax,qword ptr [testData]  
-    movups      xmm0,xmmword ptr [rax]  
-    movups      xmm1,xmmword ptr [rax+10h]  
-    mulps       xmm1,xmm0  
-    movaps      xmmword ptr [res],xmm1
-    ```
+```assembly  
+mov         rax,qword ptr [testData]  
+movups      xmm0,xmmword ptr [rax]  
+movups      xmm1,xmmword ptr [rax+10h]  
+mulps       xmm1,xmm0  
+movaps      xmmword ptr [res],xmm1
+```
     
-    and 
+and 
     
-    ```assembly
-    mov         rax,qword ptr [testData]  
-    movups      xmm0,xmmword ptr [rax]  
-    movss       xmm1,dword ptr [rax+14h]  
-    shufps      xmm1,xmm1,0  
-    mulps       xmm1,xmm0  
-    movaps      xmmword ptr [res],xmm1
-    ```
+```assembly
+mov         rax,qword ptr [testData]  
+movups      xmm0,xmmword ptr [rax]  
+movss       xmm1,dword ptr [rax+14h]  
+shufps      xmm1,xmm1,0  
+mulps       xmm1,xmm0  
+movaps      xmmword ptr [res],xmm1
+```
     
 Rest of libraries were compiled to this assembly which is better one and we already seen it:   
     
-    ```assembly 
-    mov         rax,qword ptr [testData]  
-    movaps      xmm0,xmmword ptr [rax+10h]  
-    mulps       xmm0,xmmword ptr [rax]  
-    movaps      xmmword ptr [res],xmm0
-    ```
+```assembly 
+mov         rax,qword ptr [testData]  
+movaps      xmm0,xmmword ptr [rax+10h]  
+mulps       xmm0,xmmword ptr [rax]  
+movaps      xmmword ptr [res],xmm0
+```
 
-    ```assembly 
-    mov         rax,qword ptr [testData]  
-    movss       xmm0,dword ptr [rax+10h]  
-    shufps      xmm0,xmm0,0  
-    mulps       xmm0,xmmword ptr [rax]  
-    movaps      xmmword ptr [res],xmm0 
-    ```
+```assembly 
+mov         rax,qword ptr [testData]  
+movss       xmm0,dword ptr [rax+10h]  
+shufps      xmm0,xmm0,0  
+mulps       xmm0,xmmword ptr [rax]  
+movaps      xmmword ptr [res],xmm0 
+```
     
 ### Compute tests results
 
 That was easy part, as we measured only very simple operations like component-wise multiplication and multiplying vector by scalar value which very easily translates to SIMD operations. Now lets test little bit more complicated expressions. 
 
-Compute 1 test.  
+### Compute 1 test:
+
+```c++    
+glm::vec4 compute_1(float a, float b)
+{
+    glm::vec4 const av(a, b, b, a);
+    glm::vec4 const bv(a, b, a, b);
+
+    glm::vec4 const cv(bv * av);
+    glm::vec4 const dv(av + cv);
+
+    return dv;
+}
+```
+    
+Benchmark results:  
+
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 2.98 ns    | 1.00 ns    | 1.76 ns    | GLM             | 1.37 ns   | -          | 1.01 ns   |
+| GLM SIMD        | 2.22 ns    | 1.00 ns    | 2.36 ns    | GLM SIMD        | 1.25 ns   | -          | 1.25 ns   |
+| Eigen           | 8.75 ns    | 9.68 ns    | 2.35 ns    | Eigen           | 1.78 ns   | -          | 1.24 ns   |
+| Blaze           | 16.0 ns    | 4.44 ns    | 2.36 ns    | Blaze           | 10.2 ns   | -          |  1.25 ns  |
+| Mathfu          | 2.22 ns    | 1.75 ns    | 2.37 ns    | Mathfu          | 1.25 ns   | -          | 1.24 ns   |
+| Mango           | 2.93 ns    | 1.00 ns    | 2.36 ns    | Mango           | 1.27 ns   | -          | 1.02 ns   |  
+
+Lets analyze the results see the assembly code.
     
 
 ## Swizzle tests
