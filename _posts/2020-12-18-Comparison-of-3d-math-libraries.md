@@ -106,14 +106,14 @@ Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed 
 
 This implementation of simd operations is based on often seen implementation that exploits type-punning:
 
-    ```c++    
-    struct vec4 {
-        union {
-            float x,y,z,w;
-            __m128 data;
-        };
+```c++    
+struct vec4 {
+    union {
+        float x,y,z,w;
+        __m128 data;
     };
-    ```
+};
+```
     
 Unfortunately this is UB in C++. In fact all compilers support this technique properly, and there are no errors it is interesting how it is influencing optimization of such code.
 
