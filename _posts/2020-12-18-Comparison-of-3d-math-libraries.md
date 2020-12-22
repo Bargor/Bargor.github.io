@@ -156,12 +156,133 @@ Unfortunately this is UB in C++. In fact all compilers support this technique pr
 | ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
 | Add                 | 1.40 ns    | 1.00 ns    | 1.08 ns    | Add                 | 0.600 ns   | -          | 0.452 ns   |
 | Multiply            | 1.35 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.506 ns   | -          | 0.419 ns   |
-| Multiply scalar     | 1.01 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.510 ns   | -          | 0.433 ns   |
+| Multiply scalar     | 1.68 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.510 ns   | -          | 0.433 ns   |
 | Compute 1           | 2.91 ns    | 1.00 ns    | 2.36 ns    | Compute 1           | 1.27 ns    | -          |  1.02 ns   |
 | Compute 2           | 2.02 ns    | 1.00 ns    | 1.22 ns    | Compute 2           | 0.589 ns   | -          | 0.502 ns   |
 | Compute 3           | 1.89 ns    | 1.00 ns    | 1.01 ns    | Compute 3           | 0.525 ns   | -          | 0.528 ns   |
 
-For multiply, multiply scalar tests Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC.
+For multiply and tests GLM SIMD, Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
+
+    ```assembly    
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax+10h]  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0 
+    ```
+    
+Also GLM SIMD and Eigen have best code for multiply scalar test:
+    
+    ```assembly    
+    mov         rax,qword ptr [testData]  
+    movss       xmm0,dword ptr [rax+14h]  
+    shufps      xmm0,xmm0,0  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0  
+    ```
+    
+Mango and Blaze implementations results in extra instruction which cost us a bit of performance.
+
+Mango:
+
+    ```assembly    
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax+10h]  
+    shufps      xmm0,xmm0,55h  
+    shufps      xmm0,xmm0,0  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0
+    ```
+    
+Blaze:
+    
+    ```assembly  
+    mov         rax,qword ptr [testData]  
+    movss       xmm1,dword ptr [rax+14h]  
+    shufps      xmm1,xmm1,0  
+    movups      xmm0,xmmword ptr [rax]  
+    mulps       xmm0,xmm1  
+    movaps      xmmword ptr [res],xmm0  
+    ```
+    
+GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresing.
+
+GCC didn't vectorized GLM code, for GLM SIMD and Mango produced:
+
+    ```assembly  
+    mov    0x10(%rsp),%rax
+    movaps (%rax),%xmm1
+    movaps 0x10(%rax),%xmm0
+
+    sub    $0x1,%rbx
+    jne    0x55555555e6c0 <vec4_mult_simd(benchmark::State&)+144>
+    
+    mulps  %xmm0,%xmm1
+    movaps %xmm1,(%rsp)
+    ```
+    
+Interesting thing is to have loop control instructions in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). It seems to be best code overall.
+    
+Alternative assembly was produces by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
+ 
+    ```assembly  
+    mov    (%rsp),%rax
+    movaps 0x10(%rax),%xmm0
+    mulps  (%rax),%xmm0
+    movaps %xmm0,0x20(%rsp)
+    ```
+
+    ```assembly 
+    mov    (%rsp),%rax
+    movss  0x14(%rax),%xmm0
+    shufps $0x0,%xmm0,%xmm0
+    mulps  (%rax),%xmm0
+    movaps %xmm0,0x20(%rsp)
+    ```
+
+Clang done best job overall, for vanilla GLM it vectorized it to following codes:
+
+    ```assembly  
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax]  
+    movups      xmm1,xmmword ptr [rax+10h]  
+    mulps       xmm1,xmm0  
+    movaps      xmmword ptr [res],xmm1
+    ```
+    
+    and 
+    
+    ```assembly
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax]  
+    movss       xmm1,dword ptr [rax+14h]  
+    shufps      xmm1,xmm1,0  
+    mulps       xmm1,xmm0  
+    movaps      xmmword ptr [res],xmm1
+    ```
+    
+Rest of libraries were compiled to this assembly which is better one and we already seen it:   
+    
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movaps      xmm0,xmmword ptr [rax+10h]  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0
+    ```
+
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movss       xmm0,dword ptr [rax+10h]  
+    shufps      xmm0,xmm0,0  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0 
+    ```
+    
+### Compute tests results
+
+That was easy part, as we measured only very simple operations like component-wise multiplication and multiplying vector by scalar value which very easily translates to SIMD operations. Now lets test little bit more complicated expressions. 
+
+Compute 1 test.  
+    
 
 ## Swizzle tests
 
@@ -209,7 +330,7 @@ Swizzle test code looks like this:
 ## Martix 4x4 tests
 
 For matrices I tested add and multiply operations. From 3d math graphics library perhaps most interesting operation for us is matrix multiplication. After a while of thinking maybe operation like ```transpose()``` would also interesting or specialized methods for constructing projection or view matrices would also be worth testing. I don't know if general purpose libraries like Eigen or Blaze support that out of the box.
-Mango library doesn't support adding matrices, so this result isn't available.  Code for tests looks lithe this:
+Mango library doesn't support adding matrices, so this result isn't available.  Code for tests looks like this:
 
 1. Add test:
 
