@@ -5,90 +5,57 @@ title: Comparison of 3d Math libraries
 
 In this article I want to compare performance of basic operations of different popular (and less popular) math libraries. I will focus on stuff related to 3d math used in geometry processing, so I tested Vector4 and 4x4 Matrix implementations. For GLM and Mango library I also tested swizzle implementations as this libraries have this feature.
 
-I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting because we can see how each implementation compiles on different compilers. Important thing to note: MSVC and Clang tests were run on Windows 10, and Gcc tests on Ubuntu 20.04, it seems that on Linux measuring limit is 1 nanosecond, so this results are really not accurate and comparable with the resuts from Windows. I believe this is issue on this CPU (Xeon E8450) because while running on CI (Travis) such issue didn't occur and those results (between GCC and Clang) are comparable.
+I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting because we can see how each implementation compiles on different compilers. Important thing to note: MSVC and Clang tests were run on Windows 10, and Gcc tests on Ubuntu 20.04, it seems that on GCC results are very strange on some tests and I will explain that later, but it seems that MSVC and Clang results are comparable and sometimes GCC results are strangely biased and benchmark timings are unrealistic and should be taken with big grain of salt.
 
-For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and Eigen and Blaze as state of the art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. for other libraries I'm not very familiar with them so I took default settings. Tests were made on two processor I had access to: old Xeon E5450 and i7-8850H, on second one I also run benchmarks compiled with AVX2 instrucions where is was possible.
+For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and Eigen and Blaze as state of the art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. for other libraries I'm not very familiar with them so I took default settings. Tests were made on two processor I had access to: old Xeon E5450 (SSE 4.1 capabilities) and i7-8850H, on second one I also run benchmarks compiled with AVX2 instrucions where is was possible.
 
-## Vector4 tests
+# Vector4 tests
 
 I set up few tests on which I will do the comparisons:
     
-1. Addition test:
-    
-    ```c++
-    for (auto _ : state) {
-        benchmark::ClobberMemory();
-        res = testData[0] + testData[1];
-        benchmark::ClobberMemory();
-    }
-    ```
-    
-2. Multiply test:
-    
-    ```c++
+1. Multiply and multiply by scalar tests:
+   
+   ```c++
     for (auto _ : state) {
         benchmark::ClobberMemory();
         res = testData[0] * testData[1];
         benchmark::ClobberMemory();
     }
     ```
-        
-3. Multiply by scalar:
-
+    
     ```c++    
     for (auto _ : state) {
         benchmark::ClobberMemory();
         res = testData[0] * testData[1].y;
         benchmark::ClobberMemory();
     }
-    ```         
-5. Compute 2 test:
-
-    ```c++    
-    glm::vec4 compute_2(float a, float b)
-    {
-        glm::vec4 const c(b * a);
-        glm::vec4 const d(a + c);
-
-        return d;
-    }
-    ```
+    ```   
     
-6. Compute 3 test:
-
-    ```c++    
-    glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
-    {
-        return a * b + a * b;
-    }
-    ```
-
-### 1. GLM
+I will combine anazying these tests as they are fairly similar. 
     
+Benchmark results:  
 
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 5.09 ns    | 3.03 ns    | 1.90 ns    | Add                 | 3.48 ns    | -          | 0.459 ns   |
-| Multiply            | 5.31 ns    | 3.02 ns    | 1.86 ns    | Multiply            | 3.24 ns    | -          | 0.510 ns   |
-| Multiply scalar     | 4.43 ns    | 2.01 ns    | 1.39 ns    | Multiply scalar     | 2.49 ns    | -          | 0.514 ns   |
-| Compute 1           | 2.98 ns    | 1.00 ns    | 1.76 ns    | Compute 1           | 1.37 ns    | -          | 1.01 ns    |
-| Compute 2           | 2.45 ns    | 1.00 ns    | 1.18 ns    | Compute 2           | 0.642 ns   | -          | 0.424 ns   |
-| Compute 3           | 5.96 ns    | 3.02 ns    | 1.85 ns    | Compute 3           | 3.24 ns    | -          | 0.437 ns   |
-    
-Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and thats why its winning the add and multiply tests on benchmark.
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 5.05 ns    | 3.02 ns    | 1.86 ns    | GLM             | 2.24 ns   | -          | 0.510 ns  |
+| GLM SIMD        | 1.08 ns    | 1.00 ns    | 1.01 ns    | GLM SIMD        | 0.372 ns  | -          | 0.412 ns  |
+| Eigen           | 1.02 ns    | 1.00 ns    | 1.02 ns    | Eigen           | 0.506 ns  | -          | 0.414 ns  |
+| Blaze           | 1.43 ns    | 1.00 ns    | 1.02 ns    | Blaze           | 0.513 ns  | -          | 0.499 ns  |
+| Mathfu          | 2.72 ns    | 1.00 ns    | 1.02 ns    | Mathfu          | 1.75 ns   | -          | 0.425 ns  |
+| Mango           | 1.03 ns    | 1.00 ns    | 1.01 ns    | Mango           | 0.498 ns  | -          | 0.413 ns  | 
 
-### 2. GLM SIMD
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 3.98 ns    | 2.01 ns    | 1.40 ns    | GLM             | 1.50 ns   | -          | 0.514 ns  |
+| GLM SIMD        | 1.02 ns    | 1.00 ns    | 1.01 ns    | GLM SIMD        | 0.498 ns  | -          | 0.418 ns  |
+| Eigen           | 1.04 ns    | 1.00 ns    | 1.01 ns    | Eigen           | 0.533 ns  | -          | 0.412 ns  |
+| Blaze           | 1.53 ns    | 1.00 ns    | 1.01 ns    | Blaze           | 0.580 ns  | -          | 0.408 ns  |
+| Mathfu          | 2.82 ns    | 1.00 ns    | 1.02 ns    | Mathfu          | 1.75 ns   | -          | 0.415 ns  |
+| Mango           | 1.70 ns    | 1.00 ns    | 1.01 ns    | Mango           | 0.495 ns  | -          | 0.410 ns  | 
 
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 1.40 ns    | 1.01 ns    | 1.12 ns    | Add                 | 0.618 ns   | -          | 0.532 ns   |
-| Multiply            | 1.37 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.524 ns   | -          | 0.439 ns   |
-| Multiply scalar     | 1.01 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.528 ns   | -          | 0.429 ns   |
-| Compute 1           | 2.22 ns    | 1.00 ns    | 2.36 ns    | Compute 1           | 1.25 ns    | -          |  1.25 ns   |
-| Compute 2           | 1.53 ns    | 1.00 ns    | 1.18 ns    | Compute 2           | 0.578 ns   | -          | 0.503 ns   |
-| Compute 3           | 2.10 ns    | 1.00 ns    | 1.02 ns    | Compute 3           | 0.535 ns   | -          | 0.519 ns   |
+Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and thats why its winning the multiply tests on benchmark.
 
-This implementation of simd operations is based on often seen implementation that exploits type-punning:
+GLM SIMD implementation of simd operations is based on often seen implementation that exploits type-punning:
 
 ```c++    
 struct vec4 {
@@ -98,61 +65,17 @@ struct vec4 {
     };
 };
 ```
-    
+
 Unfortunately this is UB in C++. In fact all compilers support this technique properly, and there are no errors it is interesting how it is influencing optimization of such code.
 
-### 3. Eigen
+For GLM SIMD, Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
 
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 1.59 ns    | 1.00 ns    | 1.12 ns    | Add                 | 0.586 ns   | -          | 0.528 ns   |
-| Multiply            | 1.88 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.506 ns   | -          | 0.419 ns   |
-| Multiply scalar     | 1.11 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.533 ns   | -          | 0.428 ns   |
-| Compute 1           | 8.75 ns    | 9.68 ns    | 2.35 ns    | Compute 1           | 1.78 ns    | -          | 1.24 ns    |
-| Compute 2           | 1.35 ns    | 7.08 ns    | 1.18 ns    | Compute 2           | 0.567 ns   | -          | 0.422 ns   |
-| Compute 3           | 7.84 ns    | 1.30 ns    | 1.01 ns    | Compute 3           | 2.10 ns    | -          | 0.429 ns   |
-
-### 4. Blaze
-
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 1.43 ns    | 1.00 ns    | 1.11 ns    | Add                 | 0.551 ns   | -          | 0.476 ns   |
-| Multiply            | 1.43 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.513 ns   | -          | 0.434 ns   |
-| Multiply scalar     | 1.53 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.580 ns   | -          | 0.435 ns   |
-| Compute 1           | 16.0 ns    | 4.44 ns    | 2.36 ns    | Compute 1           | 10.2 ns    | -          | 1.25 ns    |
-| Compute 2           | 8.47 ns    | 7.01 ns    | 1.27 ns    | Compute 2           | 6.73 ns    | -          | 0.785 ns   |
-| Compute 3           | 2.39 ns    | 1.00 ns    | 1.03 ns    | Compute 3           | 0.776 ns   | -          | 0.546 ns   |
-
-### 5. Mathfu
-
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 5.02 ns    | 1.00 ns    | 1.06 ns    | Add                 | 1.91 ns    | -          | 0.458 ns   |
-| Multiply            | 4.05 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 1.75 ns    | -          | 0.425 ns   |
-| Multiply scalar     | 3.30 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 1.75 ns    | -          | 0.415 ns   |
-| Compute 1           | 2.22 ns    | 1.75 ns    | 2.37 ns    | Compute 1           | 1.25 ns    | -          |  1.24 ns   |
-| Compute 2           | 1.58 ns    | 6.97 ns    | 1.18 ns    | Compute 2           | 0.744 ns   | -          | 0.421 ns   |
-| Compute 3           | 1.94 ns    | 1.00 ns    | 1.01 ns    | Compute 3           | 0.593 ns   | -          | 0.416 ns   |
-
-### 6. Mango
-
-| Xeon E8450          | MSVC       | GCC        | CLANG      | i7 8850H            | MSVC       | GCC        | CLANG      |
-| ------------------- | ---------- | ---------- | ---------- | ------------------- | ---------- | ---------- | ---------- |
-| Add                 | 1.40 ns    | 1.00 ns    | 1.08 ns    | Add                 | 0.600 ns   | -          | 0.452 ns   |
-| Multiply            | 1.35 ns    | 1.00 ns    | 1.01 ns    | Multiply            | 0.506 ns   | -          | 0.419 ns   |
-| Multiply scalar     | 1.68 ns    | 1.00 ns    | 1.01 ns    | Multiply scalar     | 0.510 ns   | -          | 0.433 ns   |
-| Compute 1           | 2.91 ns    | 1.00 ns    | 2.36 ns    | Compute 1           | 1.27 ns    | -          |  1.02 ns   |
-| Compute 2           | 2.02 ns    | 1.00 ns    | 1.22 ns    | Compute 2           | 0.589 ns   | -          | 0.502 ns   |
-| Compute 3           | 1.89 ns    | 1.00 ns    | 1.01 ns    | Compute 3           | 0.525 ns   | -          | 0.528 ns   |
-
-For multiply and tests GLM SIMD, Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
-
-```assembly    
-mov         rax,qword ptr [testData]  
-movups      xmm0,xmmword ptr [rax+10h]  
-mulps       xmm0,xmmword ptr [rax]  
-movaps      xmmword ptr [res],xmm0 
-```
+    ```assembly    
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax+10h]  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0 
+    ```
     
 Also GLM SIMD and Eigen have best code for multiply scalar test:
     
@@ -163,105 +86,105 @@ Also GLM SIMD and Eigen have best code for multiply scalar test:
     mulps       xmm0,xmmword ptr [rax]  
     movaps      xmmword ptr [res],xmm0  
     ```
-    
-Mango and Blaze implementations results in extra instruction which cost us a bit of performance.
+   
+Mango and Blaze implementations results in extra instruction which cost us a bit of performance in multiply by scalar test.
 
 Mango:
 
-```assembly    
-mov         rax,qword ptr [testData]  
-movups      xmm0,xmmword ptr [rax+10h]  
-shufps      xmm0,xmm0,55h  
-shufps      xmm0,xmm0,0  
-mulps       xmm0,xmmword ptr [rax]  
-movaps      xmmword ptr [res],xmm0
-```
+    ```assembly    
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax+10h]  
+    shufps      xmm0,xmm0,55h  
+    shufps      xmm0,xmm0,0  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0
+    ```
     
 Blaze:
     
-```assembly  
-mov         rax,qword ptr [testData]  
-movss       xmm1,dword ptr [rax+14h]  
-shufps      xmm1,xmm1,0  
-movups      xmm0,xmmword ptr [rax]  
-mulps       xmm0,xmm1  
-movaps      xmmword ptr [res],xmm0  
-```
+    ```assembly  
+    mov         rax,qword ptr [testData]  
+    movss       xmm1,dword ptr [rax+14h]  
+    shufps      xmm1,xmm1,0  
+    movups      xmm0,xmmword ptr [rax]  
+    mulps       xmm0,xmm1  
+    movaps      xmmword ptr [res],xmm0  
+    ```
     
-GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresing.
+GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresing and won't comment on their assembly.
 
 GCC didn't vectorized GLM code, for GLM SIMD and Mango produced:
 
-```assembly  
-mov    0x10(%rsp),%rax
-movaps (%rax),%xmm1
-movaps 0x10(%rax),%xmm0
+    ```assembly  
+    mov    0x10(%rsp),%rax
+    movaps (%rax),%xmm1
+    movaps 0x10(%rax),%xmm0
 
-sub    $0x1,%rbx
-jne    0x55555555e6c0 <vec4_mult_simd(benchmark::State&)+144>
+    sub    $0x1,%rbx
+    jne    0x55555555e6c0 <vec4_mult_simd(benchmark::State&)+144>
 
-mulps  %xmm0,%xmm1
-movaps %xmm1,(%rsp)
-```
+    mulps  %xmm0,%xmm1
+    movaps %xmm1,(%rsp)
+    ```
     
-Interesting thing is to have loop control instructions in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). It seems to be best code overall.
+Interesting thing is to have loop control instructions (from benchmark library) in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). It seems to be best code overall.
     
-Alternative assembly was produces by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
+Alternative assembly was produced by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
  
-```assembly  
-mov    (%rsp),%rax
-movaps 0x10(%rax),%xmm0
-mulps  (%rax),%xmm0
-movaps %xmm0,0x20(%rsp)
-```
+    ```assembly  
+    mov    (%rsp),%rax
+    movaps 0x10(%rax),%xmm0
+    mulps  (%rax),%xmm0
+    movaps %xmm0,0x20(%rsp)
+    ```
 
-```assembly 
-mov    (%rsp),%rax
-movss  0x14(%rax),%xmm0
-shufps $0x0,%xmm0,%xmm0
-mulps  (%rax),%xmm0
-movaps %xmm0,0x20(%rsp)
-```
+    ```assembly 
+    mov    (%rsp),%rax
+    movss  0x14(%rax),%xmm0
+    shufps $0x0,%xmm0,%xmm0
+    mulps  (%rax),%xmm0
+    movaps %xmm0,0x20(%rsp)
+    ```
 
 Clang done best job overall, for vanilla GLM was vectorized to following codes:
 
-```assembly  
-mov         rax,qword ptr [testData]  
-movups      xmm0,xmmword ptr [rax]  
-movups      xmm1,xmmword ptr [rax+10h]  
-mulps       xmm1,xmm0  
-movaps      xmmword ptr [res],xmm1
-```
+    ```assembly  
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax]  
+    movups      xmm1,xmmword ptr [rax+10h]  
+    mulps       xmm1,xmm0  
+    movaps      xmmword ptr [res],xmm1
+    ```
     
 and 
     
-```assembly
-mov         rax,qword ptr [testData]  
-movups      xmm0,xmmword ptr [rax]  
-movss       xmm1,dword ptr [rax+14h]  
-shufps      xmm1,xmm1,0  
-mulps       xmm1,xmm0  
-movaps      xmmword ptr [res],xmm1
-```
+    ```assembly
+    mov         rax,qword ptr [testData]  
+    movups      xmm0,xmmword ptr [rax]  
+    movss       xmm1,dword ptr [rax+14h]  
+    shufps      xmm1,xmm1,0  
+    mulps       xmm1,xmm0  
+    movaps      xmmword ptr [res],xmm1
+    ```
     
 Rest of libraries were compiled to this assembly which is better one and we already seen it:   
     
-```assembly 
-mov         rax,qword ptr [testData]  
-movaps      xmm0,xmmword ptr [rax+10h]  
-mulps       xmm0,xmmword ptr [rax]  
-movaps      xmmword ptr [res],xmm0
-```
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movaps      xmm0,xmmword ptr [rax+10h]  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0
+    ```
 
-```assembly 
-mov         rax,qword ptr [testData]  
-movss       xmm0,dword ptr [rax+10h]  
-shufps      xmm0,xmm0,0  
-mulps       xmm0,xmmword ptr [rax]  
-movaps      xmmword ptr [res],xmm0 
-```
-    
-### Compute tests results
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movss       xmm0,dword ptr [rax+10h]  
+    shufps      xmm0,xmm0,0  
+    mulps       xmm0,xmmword ptr [rax]  
+    movaps      xmmword ptr [res],xmm0 
+    ```
+     
+## Compute tests results
 
 That was easy part, as we measured only very simple operations like component-wise multiplication and multiplying vector by scalar value which very easily translates to SIMD operations. Now lets test little bit more complicated expressions. 
 
@@ -284,15 +207,180 @@ Benchmark results:
 
 | Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
 | ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
-| GLM             | 2.98 ns    | 1.00 ns    | 1.76 ns    | GLM             | 1.37 ns   | -          | 1.01 ns   |
-| GLM SIMD        | 2.22 ns    | 1.00 ns    | 2.36 ns    | GLM SIMD        | 1.25 ns   | -          | 1.25 ns   |
-| Eigen           | 8.75 ns    | 9.68 ns    | 2.35 ns    | Eigen           | 1.78 ns   | -          | 1.24 ns   |
-| Blaze           | 16.0 ns    | 4.44 ns    | 2.36 ns    | Blaze           | 10.2 ns   | -          |  1.25 ns  |
-| Mathfu          | 2.22 ns    | 1.75 ns    | 2.37 ns    | Mathfu          | 1.25 ns   | -          | 1.24 ns   |
-| Mango           | 2.93 ns    | 1.00 ns    | 2.36 ns    | Mango           | 1.27 ns   | -          | 1.02 ns   |  
+| GLM             | 2.48 ns    | 1.00 ns    | 1.78 ns    | GLM             | 1.07 ns   | -          | 1.01 ns   |
+| GLM SIMD        | 1.86 ns    | 1.00 ns    | 2.36 ns    | GLM SIMD        | 1.24 ns   | -          | 1.24 ns   |
+| Eigen           | 6.08 ns    | 9.68 ns    | 2.38 ns    | Eigen           | 1.78 ns   | -          | 1.25 ns   |
+| Blaze           | 16.0 ns    | 9.68 ns    | 2.37 ns    | Blaze           | 10.2 ns   | -          | 1.25 ns   |
+| Mathfu          | 1.86 ns    | 1.75 ns    | 2.38 ns    | Mathfu          | 1.25 ns   | -          | 1.24 ns   |
+| Mango           | 3.00 ns    | 1.00 ns    | 2.37 ns    | Mango           | 1.24 ns   | -          | 0.991 ns  |  
 
 Lets analyze the results see the assembly code.
+
+MSVC compiled code has two anomalies Eigen and Blaze implementations which we would expect to be much better. Eigen assembly is:
+
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movss       xmm3,dword ptr [rax+14h]  
+    movss       xmm4,dword ptr [rax]  
+    movaps      xmm2,xmm3  
+    movaps      xmm5,xmm4  
+    unpcklps    xmm2,xmm4  
+    unpcklps    xmm5,xmm3  
+    movlhps     xmm5,xmm2  
+    movaps      xmm1,xmm4  
+    unpcklps    xmm1,xmm3  
+    movlhps     xmm1,xmm1  
+    mulps       xmm1,xmm5  
+    addps       xmm1,xmm5  
+    movaps      xmmword ptr [res],xmm1 
+    ```
+
+unfortunately I don't know why this is being so slow and Blaze:
+
+    ```assembly
+    mov         rax,qword ptr [rbp-39h]  
+    movss       xmm1,dword ptr [rax+14h]  
+    movss       xmm2,dword ptr [rax]  
+    movss       dword ptr [rbp-21h],xmm2  
+    movss       dword ptr [rbp-1Dh],xmm1  
+    movss       dword ptr [rbp-19h],xmm1  
+    movss       dword ptr [rbp-15h],xmm2  
+    xorps       xmm0,xmm0  
+    movups      xmmword ptr [rbp+17h],xmm0  
+    lea         rcx,[rbp-21h]  
+    lea         rdx,[rbp+17h]  
+    nop         dword ptr [rax]  
+    mov         eax,dword ptr [rcx]  
+    mov         dword ptr [rdx],eax  
+    lea         rdx,[rdx+4]  
+    add         rcx,4  
+    lea         rax,[rbp-11h]  
+    cmp         rcx,rax  
+    jne         vec4_compute_1+0A0h (07FF7644C72D0h)  
+    movss       dword ptr [rbp-11h],xmm2  
+    movss       dword ptr [rbp-0Dh],xmm1  
+    movss       dword ptr [rbp-9],xmm2  
+    movss       dword ptr [rbp-5],xmm1  
+    xorps       xmm0,xmm0  
+    movups      xmmword ptr [rbp+7],xmm0  
+    lea         rcx,[rbp-11h]  
+    lea         rdx,[rbp+7]  
+    nop         dword ptr [rax+rax]  
+    mov         eax,dword ptr [rcx]  
+    mov         dword ptr [rdx],eax  
+    lea         rdx,[rdx+4]  
+    add         rcx,4  
+    lea         rax,[rbp-1]  
+    cmp         rcx,rax  
+    jne         vec4_compute_1+0E0h (07FF7644C7310h)  
+    movaps      xmm0,xmmword ptr [rbp+7]  
+    movaps      xmm1,xmmword ptr [rbp+17h]  
+    mulps       xmm0,xmm1  
+    addps       xmm1,xmm0  
+    movaps      xmmword ptr [rbp+27h],xmm1  
+    ```
     
+It seems to be a real distaster. It seems that it has two loops where the vectors are constructed.
+
+GLM SIMD and Mathfu resulted it following code:
+
+    ```assembly
+    mov         rax,qword ptr [testData]  
+    movss       xmm3,dword ptr [rax+14h]  
+    movss       xmm4,dword ptr [rax]  
+    movaps      xmm2,xmm3  
+    movaps      xmm5,xmm4  
+    unpcklps    xmm2,xmm4  
+    unpcklps    xmm5,xmm3  
+    movlhps     xmm5,xmm2  
+    movaps      xmm1,xmm4  
+    unpcklps    xmm1,xmm3  
+    movlhps     xmm1,xmm1  
+    movaps      xmm0,xmm5  
+    mulps       xmm0,xmm1  
+    addps       xmm5,xmm0  
+    movdqa      xmmword ptr [res],xmm5  
+    ```
+
+Mango code looks identical to Eigen but result is very different, I run measurements many times and timins were always the sameand I don't know why the Eigen results is biased. I checked that on Appveyor CI results were very similar anyway it is worse code than GLM SIMD / Mathfu.   
+
+    ```assembly   
+    mov         rax,qword ptr [testData]  
+    movups      xmm4,xmmword ptr [rax+10h]  
+    shufps      xmm4,xmm4,55h  
+    movups      xmm3,xmmword ptr [rax]  
+    movaps      xmm2,xmm4  
+    movaps      xmm5,xmm3  
+    unpcklps    xmm2,xmm3  
+    unpcklps    xmm5,xmm4  
+    movlhps     xmm5,xmm2  
+    movaps      xmm1,xmm3  
+    unpcklps    xmm1,xmm4  
+    movlhps     xmm1,xmm1  
+    mulps       xmm1,xmm5  
+    addps       xmm1,xmm5  
+    movaps      xmmword ptr [res],xmm1
+    ```
+
+Clang again produces most consistent code, however best is produces for GLM library:
+
+    ```assembly   
+    mov         rax,qword ptr [testData]  
+    movss       xmm0,dword ptr [rax]  
+    movss       xmm1,dword ptr [rax+14h]  
+    movaps      xmm2,xmm0  
+    mulss       xmm2,xmm1  
+    unpcklps    xmm0,xmm1  
+    movaps      xmm1,xmm0  
+    mulps       xmm1,xmm0  
+    shufps      xmm1,xmm2,4  
+    shufps      xmm0,xmm0,14h  
+    addps       xmm0,xmm1  
+    movaps      xmmword ptr [res],xmm0  
+    ```
+    
+    and other version for all other libraries:
+    
+    ```assembly 
+    mov         rax,qword ptr [testData]  
+    movss       xmm0,dword ptr [rax]  
+    movss       xmm1,dword ptr [rax+14h]  
+    movaps      xmm2,xmm0  
+    unpcklps    xmm2,xmm1  
+    movaps      xmm3,xmm2  
+    shufps      xmm3,xmm1,84h  
+    shufps      xmm1,xmm0,0  
+    shufps      xmm0,xmm3,20h  
+    movaps      xmm3,xmm2  
+    shufps      xmm3,xmm0,24h  
+    shufps      xmm2,xmm1,24h  
+    mulps       xmm2,xmm3  
+    addps       xmm2,xmm3  
+    movaps      xmmword ptr [res],xmm2  
+    ```
+
+
+### 2. Compute 2 test:
+
+    ```c++    
+    glm::vec4 compute_2(float a, float b)
+    {
+        glm::vec4 const c(b * a);
+        glm::vec4 const d(a + c);
+
+        return d;
+    }
+    ```
+    
+### 3. Compute 3 test:
+
+    ```c++    
+    glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
+    {
+        return a * b + a * b;
+    }
+    ```
+
 
 ## Swizzle tests
 
@@ -352,7 +440,7 @@ Mango library doesn't support adding matrices, so this result isn't available.  
     }
     ```
     
-1. Multiply test:
+2. Multiply test:
 
     ```c++    
     for (auto _ : state) {
