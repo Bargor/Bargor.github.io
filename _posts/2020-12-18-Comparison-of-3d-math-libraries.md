@@ -218,22 +218,22 @@ Lets analyze the results see the assembly code.
 
 MSVC compiled code has two anomalies Eigen and Blaze implementations which we would expect to be much better. Eigen assembly is:
 
-    ```assembly 
-    mov         rax,qword ptr [testData]  
-    movss       xmm3,dword ptr [rax+14h]  
-    movss       xmm4,dword ptr [rax]  
-    movaps      xmm2,xmm3  
-    movaps      xmm5,xmm4  
-    unpcklps    xmm2,xmm4  
-    unpcklps    xmm5,xmm3  
-    movlhps     xmm5,xmm2  
-    movaps      xmm1,xmm4  
-    unpcklps    xmm1,xmm3  
-    movlhps     xmm1,xmm1  
-    mulps       xmm1,xmm5  
-    addps       xmm1,xmm5  
-    movaps      xmmword ptr [res],xmm1 
-    ```
+```assembly 
+mov         rax,qword ptr [testData]  
+movss       xmm3,dword ptr [rax+14h]  
+movss       xmm4,dword ptr [rax]  
+movaps      xmm2,xmm3  
+movaps      xmm5,xmm4  
+unpcklps    xmm2,xmm4  
+unpcklps    xmm5,xmm3  
+movlhps     xmm5,xmm2  
+movaps      xmm1,xmm4  
+unpcklps    xmm1,xmm3  
+movlhps     xmm1,xmm1  
+mulps       xmm1,xmm5  
+addps       xmm1,xmm5  
+movaps      xmmword ptr [res],xmm1 
+```
 
 unfortunately I don't know why this is being so slow and Blaze:
 
@@ -284,27 +284,27 @@ It seems to be a real distaster. It seems that it has two loops where the vector
 
 GLM SIMD and Mathfu resulted it following code:
 
-    ```x86asm
-    mov         rax,qword ptr [testData]  
-    movss       xmm3,dword ptr [rax+14h]  
-    movss       xmm4,dword ptr [rax]  
-    movaps      xmm2,xmm3  
-    movaps      xmm5,xmm4  
-    unpcklps    xmm2,xmm4  
-    unpcklps    xmm5,xmm3  
-    movlhps     xmm5,xmm2  
-    movaps      xmm1,xmm4  
-    unpcklps    xmm1,xmm3  
-    movlhps     xmm1,xmm1  
-    movaps      xmm0,xmm5  
-    mulps       xmm0,xmm1  
-    addps       xmm5,xmm0  
-    movdqa      xmmword ptr [res],xmm5  
-    ```
+```x86asm
+mov         rax,qword ptr [testData]  
+movss       xmm3,dword ptr [rax+14h]  
+movss       xmm4,dword ptr [rax]  
+movaps      xmm2,xmm3  
+movaps      xmm5,xmm4  
+unpcklps    xmm2,xmm4  
+unpcklps    xmm5,xmm3  
+movlhps     xmm5,xmm2  
+movaps      xmm1,xmm4  
+unpcklps    xmm1,xmm3  
+movlhps     xmm1,xmm1  
+movaps      xmm0,xmm5  
+mulps       xmm0,xmm1  
+addps       xmm5,xmm0  
+movdqa      xmmword ptr [res],xmm5  
+```
 
 Mango code looks identical to Eigen but result is very different, I run measurements many times and timins were always the sameand I don't know why the Eigen results is biased. I checked that on Appveyor CI results were very similar anyway it is worse code than GLM SIMD / Mathfu.   
 
-    ```assembly   
+    ```   
     mov         rax,qword ptr [testData]  
     movups      xmm4,xmmword ptr [rax+10h]  
     shufps      xmm4,xmm4,55h  
@@ -324,7 +324,7 @@ Mango code looks identical to Eigen but result is very different, I run measurem
 
 Clang again produces most consistent code, however best is produced for GLM library without SIMD support enabled, it is best result of all tested libraries:
 
-    ```assembly   
+    ```   
     mov         rax,qword ptr [testData]  
     movss       xmm0,dword ptr [rax]  
     movss       xmm1,dword ptr [rax+14h]  
@@ -341,7 +341,7 @@ Clang again produces most consistent code, however best is produced for GLM libr
     
 and other version for all other libraries:
     
-    ```assembly 
+    ``` 
     mov         rax,qword ptr [testData]  
     movss       xmm0,dword ptr [rax]  
     movss       xmm1,dword ptr [rax+14h]  
@@ -362,15 +362,15 @@ and other version for all other libraries:
 
 ### 2. Compute 2 test:
 
-    ```c++    
-    glm::vec4 compute_2(float a, float b)
-    {
-        glm::vec4 const c(b * a);
-        glm::vec4 const d(a + c);
+```c++    
+glm::vec4 compute_2(float a, float b)
+{
+    glm::vec4 const c(b * a);
+    glm::vec4 const d(a + c);
 
-        return d;
-    }
-    ```
+    return d;
+}
+```
     
 Benchmark results:  
 
@@ -380,17 +380,17 @@ Benchmark results:
 | GLM SIMD        | 1.02 ns    | 1.00 ns    | 1.18 ns    | GLM SIMD        | 0.498 ns  | -          | 0.497 ns  |
 | Eigen           | 1.02 ns    | 7.08 ns    | 1.18 ns    | Eigen           | 0.567 ns  | -          | 0.496 ns  |
 | Blaze           | 8.47 ns    | 7.01 ns    | 1.18 ns    | Blaze           | 6.73 ns   | -          | 0.528 ns  |
-| Mathfu          | 1.33 ns    | 5.71 ns    | 1.19 ns    | Mathfu          | 0.744 ns  | -          | 0.406 ns  |
-| Mango           | 1.51 ns    | 1.00 ns    | 1.23 ns    | Mango           | 0.500 ns  | -          | 0.991 ns  | 
+| Mathfu          | 1.33 ns    | 5.71 ns    | 1.19 ns    | Mathfu          | 0.744 ns  | -          | 0.422 ns  |
+| Mango           | 1.51 ns    | 1.00 ns    | 1.23 ns    | Mango           | 0.500 ns  | -          | 0.406 ns  | 
     
 ### 3. Compute 3 test:
 
-    ```c++    
-    glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
-    {
-        return a * b + a * b;
-    }
-    ```
+```c++    
+glm::vec4 compute_3(glm::vec4 a, glm::vec4 b)
+{
+    return a * b + a * b;
+}
+```
     
 Benchmark results:  
 
