@@ -284,7 +284,7 @@ It seems to be a real distaster. It seems that it has two loops where the vector
 
 GLM SIMD and Mathfu resulted it following code:
 
-    ```assembly
+    ```x86asm
     mov         rax,qword ptr [testData]  
     movss       xmm3,dword ptr [rax+14h]  
     movss       xmm4,dword ptr [rax]  
@@ -322,7 +322,7 @@ Mango code looks identical to Eigen but result is very different, I run measurem
     movaps      xmmword ptr [res],xmm1
     ```
 
-Clang again produces most consistent code, however best is produces for GLM library:
+Clang again produces most consistent code, however best is produced for GLM library without SIMD support enabled, it is best result of all tested libraries:
 
     ```assembly   
     mov         rax,qword ptr [testData]  
@@ -339,7 +339,7 @@ Clang again produces most consistent code, however best is produces for GLM libr
     movaps      xmmword ptr [res],xmm0  
     ```
     
-    and other version for all other libraries:
+and other version for all other libraries:
     
     ```assembly 
     mov         rax,qword ptr [testData]  
@@ -372,6 +372,17 @@ Clang again produces most consistent code, however best is produces for GLM libr
     }
     ```
     
+Benchmark results:  
+
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 2.37 ns    | 1.00 ns    | 1.22 ns    | GLM             | 0.498 ns  | -          | 0.424 ns  |
+| GLM SIMD        | 1.02 ns    | 1.00 ns    | 1.18 ns    | GLM SIMD        | 0.498 ns  | -          | 0.497 ns  |
+| Eigen           | 1.02 ns    | 7.08 ns    | 1.18 ns    | Eigen           | 0.567 ns  | -          | 0.496 ns  |
+| Blaze           | 8.47 ns    | 7.01 ns    | 1.18 ns    | Blaze           | 6.73 ns   | -          | 0.528 ns  |
+| Mathfu          | 1.33 ns    | 5.71 ns    | 1.19 ns    | Mathfu          | 0.744 ns  | -          | 0.406 ns  |
+| Mango           | 1.51 ns    | 1.00 ns    | 1.23 ns    | Mango           | 0.500 ns  | -          | 0.991 ns  | 
+    
 ### 3. Compute 3 test:
 
     ```c++    
@@ -380,6 +391,17 @@ Clang again produces most consistent code, however best is produces for GLM libr
         return a * b + a * b;
     }
     ```
+    
+Benchmark results:  
+
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 5.15 ns    | 3.02 ns    | 2.05 ns    | GLM             | 2.23 ns   | -          | 0.437 ns  |
+| GLM SIMD        | 1.47 ns    | 1.00 ns    | 1.02 ns    | GLM SIMD        | 0.497 ns  | -          | 0.498 ns  |
+| Eigen           | 6.75 ns    | 1.30 ns    | 1.01 ns    | Eigen           | 2.10 ns   | -          | 0.498 ns  |
+| Blaze           | 2.39 ns    | 1.00 ns    | 1.03 ns    | Blaze           | 0.776 ns  | -          | 0.534 ns  |
+| Mathfu          | 1.52 ns    | 1.00 ns    | 1.02 ns    | Mathfu          | 0.593 ns  | -          | 0.416 ns  |
+| Mango           | 1.49 ns    | 1.00 ns    | 1.02 ns    | Mango           | 0.496 ns  | -          | 0.408 ns  | 
 
 
 ## Swizzle tests
