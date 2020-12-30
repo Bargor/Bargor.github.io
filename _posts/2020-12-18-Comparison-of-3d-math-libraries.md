@@ -560,6 +560,51 @@ for (auto _ : state) {
     benchmark::ClobberMemory();
 }
 ```
+
+Benchmark results:  
+
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG     |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | --------- |
+| GLM             | 18.3 ns    | 11.7 ns    | 1.02 ns    | GLM             | 10.3 ns   | -          | 9.26 ns   |
+| GLM SIMD        | 5.47 ns    | 3.03 ns    | 1.74 ns    | GLM SIMD        | 5.81 ns   | -          | 4.63 ns   |
+| Eigen           | 5.97 ns    | 3.17 ns    | 0.867 ns   | Eigen           | 0.955 ns  | -          | 4.52 ns   |
+| Blaze           | 10.2 ns    | 3.17 ns    | 1.79 ns    | Blaze           | 3.11 ns   | -          | 6.71 ns   |
+| Mathfu          | 12.3 ns    | 3.17 ns    | 1.63 ns    | Mathfu          | 7.41 ns   | -          | 5.08 ns   |
+| Mango           | -          | -          | -          | Mango           | -         | -          | -         |
+
+In addition test best results for MSVC are GLM SIMD and Eigen implementations - they are vectorized and seems to be optimal. Blaze code generated loop and matrix vectors are added in a loop which isn't unrolled and it result in worse performance. GLM and Mathfu aren't vectorized and generated assembly is very long.
+
+GCC compiled Eigen, Blaze and Mathfu to this "optimal" assembly. For GLM SIMD it resulted in assembly with 12 extractps and 8 movaps instructions in addition to obvious 4 addps instrucions which are doing actual work. This code is much worse then MSVC assembly for same implementation. GLM implementation is again unvectorized and very slow.
+
+Clang vectorized GLM implementation but it seem that it has to align data before adding and this is reason extra few instructions. All other libraries were compiled to very similar code (same number of instructions, different order). Here I attach "optimal" assembly:
+
+```
+mov         rax,qword ptr [testData]  
+movaps      xmm0,xmmword ptr [rax]  
+movaps      xmm1,xmmword ptr [rax+10h]  
+movaps      xmm2,xmmword ptr [rax+20h]  
+movaps      xmm3,xmmword ptr [rax+30h]  
+addps       xmm0,xmmword ptr [rax+40h]  
+addps       xmm1,xmmword ptr [rax+50h]  
+addps       xmm2,xmmword ptr [rax+60h]  
+addps       xmm3,xmmword ptr [rax+70h]  
+movaps      xmmword ptr [res],xmm0  
+movaps      xmmword ptr [rbp-50h],xmm1  
+movaps      xmmword ptr [rbp-40h],xmm2  
+movaps      xmmword ptr [rbp-30h],xmm3 
+```
+
+While compiling code for AVX2 architecture I noticed that Eigen code is compiled to only two additions of wider registers (256 bit) both on Clang and MSVC.
+
+```
+mov         rax,qword ptr [rbp]  
+vmovups     ymm0,ymmword ptr [rax+40h]  
+vaddps      ymm1,ymm0,ymmword ptr [rax]  
+vmovups     ymmword ptr [res],ymm1  
+vmovups     ymm2,ymmword ptr [rax+20h]  
+vaddps      ymm0,ymm2,ymmword ptr [rax+60h]  
+vmovups     ymmword ptr [rbp+40h],ymm0 
+```
     
 2. Multiply test:
 
@@ -571,44 +616,17 @@ for (auto _ : state) {
 }
 ```
 
-### 1. GLM
+Benchmark results:  
 
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 18.3 ns    | 11.7 ns    | 9.26  ns   | Add        | 10.3 ns    | -          | 1.02 ns    |
-| Multiply    | 68.7 ns    | 11.7 ns    | 32.8  ns   | Multiply   | 21.8 ns    | -          | 7.01 ns    |
+| Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG    |
+| ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | -------- |
+| GLM             | 68.7 ns    | 11.7 ns    | 7.01 ns    | GLM             | 21.8 ns   | -          | 32.8 ns  |
+| GLM SIMD        | 14.8 ns    | 7.18 ns    | 3.82 ns    | GLM SIMD        | 9.33 ns   | -          | 17.4 ns  |
+| Eigen           | 18.1 ns    | 8.55 ns    | 4.47 ns    | Eigen           | 8.06 ns   | -          | 15.0 ns  |
+| Blaze           | 24.5 ns    | 8.66 ns    | 6.07 ns    | Blaze           | 18.4 ns   | -          | 19.3 ns  |
+| Mathfu          | 32.9 ns    | 43.1 ns    | 21.3 ns    | Mathfu          | 16.4 ns   | -          | 50.9 ns  |
+| Mango           | 15.2 ns    | 9.68 ns    | 4.74 ns    | Mango           | 4.30 ns   | -          | 15.9 ns  |
 
-### 2. GLM SIMD
 
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 5.47 ns    | 3.03 ns    | 4.63  ns   | Add        | 5.81 ns    | -          | 1.74 ns    |
-| Multiply    | 14.8 ns    | 7.18 ns    | 17.4  ns   | Multiply   | 9.33 ns    | -          | 3.82 ns    |
 
-### 3. Eigen
-
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 5.97 ns    | 3.17 ns    | 4.52  ns   | Add        | 0.955 ns   | -          | 0.867 ns   |
-| Multiply    | 18.1 ns    | 8.55 ns    | 15.0  ns   | Multiply   |  8.06 ns   | -          |  4.47 ns   |
-
-### 4. Blaze
-
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 10.2 ns    | 3.17 ns    | 6.71  ns   | Add        | 3.11 ns    | -          | 1.79 ns    |
-| Multiply    | 24.5 ns    | 8.66 ns    | 19.3  ns   | Multiply   | 18.4 ns    | -          | 6.07 ns    |
-
-### 5. Mathfu
-
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Add         | 12.3 ns    | 3.17 ns    | 5.08  ns   | Add        | 7.41 ns    | -          | 1.63 ns    |
-| Multiply    | 32.9 ns    | 43.1 ns    | 50.9  ns   | Multiply   | 16.4 ns    | -          | 21.3 ns    |
-
-### 6. Mango
-
-| Xeon E8450  | MSVC       | GCC        | CLANG      | i7 8850H   | MSVC       | GCC        | CLANG      |
-| ----------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
-| Multiply    | 15.2 ns    | 9.68 ns    | 15.9  ns   | Add        | 4.30 ns    | -          | 4.74 ns    |
-
+## Summary
