@@ -645,8 +645,6 @@ Blaze and Mathfu are often much worse, for me it is quite strange that "theoreti
 
 Overall worst performance had (perhaps) most often used plain GLM library - out of the box implementation doesn't take advantage of the SIMD instructions. Even if Clang can vectorize it, there is worry about alignment and it has to take care of it and align the data which comes with a cost. Don't use this implementation, drop in few macros that enables SIMD instructions in this implementation. Probably you will notice slower compilation times, but if you care about runtime performance it is worth it.
 
+All code, results and dissassemblies are available on Github [https://github.com/Bargor/3d-math-benchmark].
 
-
-
-
-
+If you see faults in methodology of the tests or have some thoughts about it - feel free to contact me and discuss it.
