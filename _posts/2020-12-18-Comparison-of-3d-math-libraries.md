@@ -127,7 +127,7 @@ mulps  %xmm0,%xmm1
 movaps %xmm1,(%rsp)
 ```
     
-Interesting thing is to have loop control instructions (from benchmark library) in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). It seems to be best code overall.
+Interesting thing is to have loop control instructions (from benchmark library) in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). We will see this many times done by GCC in other tests. Usually those tests have better results than other. This reordering probably can result in returning from the measured function early and biasing the result. I didn't analyzed in detail how google benchmark library work and why this effect takes place even if I'm using the memory barriers to prevent that.
     
 Alternative assembly was produced by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
  
@@ -216,7 +216,7 @@ Benchmark results:
 
 Lets analyze the results see the assembly code.
 
-MSVC compiled code has two anomalies Eigen and Blaze implementations which we would expect to be much better. Eigen assembly is:
+MSVC compiled code has two anomalies, Eigen and Blaze implementations which we would expect to be much better. Eigen assembly is:
 
 ```assembly 
 mov         rax,qword ptr [testData]  
@@ -282,7 +282,7 @@ movaps      xmmword ptr [rbp+27h],xmm1
     
 It seems to be a real distaster. It seems that it has two loops where the vectors are constructed.
 
-GLM SIMD and Mathfu resulted it following code:
+GLM SIMD and Mathfu resulted it following code which is very similar to Eigen's, registers in some instructions are different:
 
 ```x86asm
 mov         rax,qword ptr [testData]  
@@ -302,7 +302,7 @@ addps       xmm5,xmm0
 movdqa      xmmword ptr [res],xmm5  
 ```
 
-Mango code looks identical to Eigen but result is very different, I run measurements many times and timins were always the sameand I don't know why the Eigen results is biased. I checked that on Appveyor CI results were very similar anyway it is worse code than GLM SIMD / Mathfu.   
+Mango code looks almost identical to Eigen but result is very different, I run measurements many times and timings were always the same and I don't know why the Eigen results is biased. I checked that on Appveyor CI, results were very similar anyway it is worse code than GLM SIMD / Mathfu.   
 
 ```x86asm   
 mov         rax,qword ptr [testData]  
@@ -620,13 +620,33 @@ Benchmark results:
 
 | Xeon E8450      | MSVC       | GCC        | CLANG      | i7 8850H        | MSVC      | GCC        | CLANG    |
 | ----------------| ---------- | ---------- | ---------- | --------------- | --------- | ---------- | -------- |
-| GLM             | 68.7 ns    | 11.7 ns    | 7.01 ns    | GLM             | 21.8 ns   | -          | 32.8 ns  |
-| GLM SIMD        | 14.8 ns    | 7.18 ns    | 3.82 ns    | GLM SIMD        | 9.33 ns   | -          | 17.4 ns  |
-| Eigen           | 18.1 ns    | 8.55 ns    | 4.47 ns    | Eigen           | 8.06 ns   | -          | 15.0 ns  |
-| Blaze           | 24.5 ns    | 8.66 ns    | 6.07 ns    | Blaze           | 18.4 ns   | -          | 19.3 ns  |
-| Mathfu          | 32.9 ns    | 43.1 ns    | 21.3 ns    | Mathfu          | 16.4 ns   | -          | 50.9 ns  |
-| Mango           | 15.2 ns    | 9.68 ns    | 4.74 ns    | Mango           | 4.30 ns   | -          | 15.9 ns  |
+| GLM             | 68.7 ns    | 11.7 ns    | 32.8 ns    | GLM             | 21.8 ns   | -          | 7.01 ns  |
+| GLM SIMD        | 14.8 ns    | 7.18 ns    | 17.4 ns    | GLM SIMD        | 9.33 ns   | -          | 3.82 ns  |
+| Eigen           | 18.1 ns    | 8.55 ns    | 15.0 ns    | Eigen           | 8.06 ns   | -          | 4.47 ns  |
+| Blaze           | 24.5 ns    | 8.66 ns    | 19.3 ns    | Blaze           | 18.4 ns   | -          | 6.07 ns  |
+| Mathfu          | 32.9 ns    | 43.1 ns    | 50.9 ns    | Mathfu          | 16.4 ns   | -          | 21.3 ns  |
+| Mango           | 15.2 ns    | 9.68 ns    | 15.9 ns    | Mango           | 4.30 ns   | -          | 4.74 ns  |
 
+MSVC didn't inline GLM, Blaze and Mathfu code, is unvectorized which explains the slow performance. Other are close in performance, I didn't compared them in detail, but it seems that Mango is shortest. AVX2 implementations here can use Fused-Multiply-Add instructions a lot which makes code twice shorter.
 
+When compiing by GCC worst code is generated for Mathfu and GLM (around 250 instructions). Better is GLM SIMD (over 90 instructions). Best are Eigen, Blaze and Mango - around 70 instructions.
+
+Clang worst implementation is Mathfu (200 instructions) next is GLM (100 instructions). Blaze was compiled to something with loop, code is short but executed more than one time and thus not best implementation. Again GLM SIMD, Eigen and Mango resulted in similar best performing code.
 
 ## Summary
+
+I came two few conclusions after performing the tests. First - don't trust google benchmark results until you see the assembly and reason about it. Most of GCC results are very inaccurate probably because compiler reordered the code. MSVC and Clang results are comparable in that regards, that we can reason about performance from benchmark results.
+
+Second - much more important then implementation of the library is to use right copmiler. Overall in most tests - especially vector tests Clang compiled almost every implementation (with exception of GLM) to same assembly. Generally best library is that compiled by Clang. Second best compiler overall is GCC, however sometimes, it had worst code.
+
+Third - It seems that first place of the benchmark is taken by Eigen and GLM SIMD is usually same or very slightly worse results. Given that Eigen is not so easy to use (at least for me) GLM is better choice, also it have swizzle funcionality which is sometimes useful. Also Mango library comes with similar functionality however it is often slightly worse than first two. Sometimes it has better times on the benchmark, but I don't know how to explain that, and I don't fully trust those results. 
+
+Blaze and Mathfu are often much worse, for me it is quite strange that "theoretically" wo well written library such as Blaze could have such problems. But occasionally its code haven't been unrolled and we had to pay the price for loop control instructions. On the other hand Mathfu wasn't always vectorized and due to that I consider it unstable.
+
+Overall worst performance had (perhaps) most often used plain GLM library - out of the box implementation doesn't take advantage of the SIMD instructions. Even if Clang can vectorize it, there is worry about alignment and it has to take care of it and align the data which comes with a cost. Don't use this implementation, drop in few macros that enables SIMD instructions in this implementation. Probably you will notice slower compilation times, but if you care about runtime performance it is worth it.
+
+
+
+
+
+
