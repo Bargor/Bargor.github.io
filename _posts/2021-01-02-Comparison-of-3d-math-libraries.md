@@ -3,15 +3,15 @@ layout: post
 title: Comparison of 3d Math libraries
 ---
 
-In this article I want to compare performance of basic operations of different popular (and less popular) math libraries. I will focus on stuff related to 3d math used in geometry processing, so I tested Vector4 and 4x4 Matrix implementations. For GLM and Mango library I also tested swizzle implementations as this libraries have this feature.
+In this article I want to compare performance of basic operations of different popular (and less popular) math libraries. I will focus on stuff related to 3d math used in geometry processing, so I tested Vector 4 and 4x4 Matrix implementations. For GLM and Mango library I also tested swizzle implementations as these libraries have this feature.
 
-I tested presented libraries on 3 major compilers (MSVC, Gcc, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting because we can see how each implementation compiles on different compilers. Important thing to note: MSVC and Clang tests were run on Windows 10, and Gcc tests on Ubuntu 20.04, it seems that on GCC results are very strange on some tests and I will explain that later, but it seems that MSVC and Clang results are comparable and sometimes GCC results are strangely biased and benchmark timings are unrealistic and should be taken with big grain of salt.
+I tested presented libraries on 3 major compilers (MSVC, GCC, Clang) using google benchmark. Benchmark results are quite interesting as it tells us which library is most performant, however dissassemblies are most interesting, because we can see how each implementation compiles on different compilers. Important thing to note: MSVC and Clang tests were run on Windows 10, and GCC tests on Ubuntu 20.04, it seems that on GCC results are very strange on some tests and I will explain that later. However, it seems that MSVC and Clang results are comparable and sometimes GCC results are strangely biased and benchmark timings are unrealistic and should be taken with big grain of salt.
 
-For benchmark I took GLM, Mathfu and Mango ad typical 3d game math libraries and Eigen and Blaze as state of the art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. for other libraries I'm not very familiar with them so I took default settings. Tests were made on two processor I had access to: old Xeon E5450 (SSE 4.1 capabilities) and i7-8850H, on second one I also run benchmarks compiled with AVX2 instrucions where is was possible.
+For benchmark, I took GLM, Mathfu and Mango as typical 3d game math libraries and Eigen and Blaze as state-of-the-art general purpose math libraries. GLM library is tested in two modes "out of the box" and SIMD configured mode. For other libraries I'm not very familiar with them, so I took default settings. Tests were made on two processors I had access to: old Xeon E5450 (SSE 4.1 capabilities) and i7-8850H, on the second one I also run benchmarks compiled with AVX2 instructions where it was possible.
 
 # Vector4 tests
 
-I set up few tests on which I will do the comparisons:
+I set up a few tests on which I will do the comparisons:
     
 1. Multiply and multiply by scalar tests:
    
@@ -31,7 +31,7 @@ I set up few tests on which I will do the comparisons:
     }
     ```   
     
-I will combine anazying these tests as they are fairly similar. 
+I will combine analyzing these tests as they are fairly similar.
     
 Benchmark results:  
 
@@ -53,9 +53,9 @@ Benchmark results:
 | Mathfu          | 2.82 ns    | 1.00 ns    | 1.02 ns    | Mathfu          | 1.75 ns   | -          | 0.415 ns  |
 | Mango           | 1.70 ns    | 1.00 ns    | 1.01 ns    | Mango           | 0.495 ns  | -          | 0.410 ns  | 
 
-Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and thats why its winning the multiply tests on benchmark.
+Default configured GLM wasn't auto-vectorized by MSVC and GCC but Clang managed to do it and that's why it's winning the multiply tests on benchmark.
 
-GLM SIMD implementation of simd operations is based on often seen implementation that exploits type-punning:
+GLM SIMD implementation of vectorized operations is based on an often seen implementation that exploits type-punning:
 
 ```c++    
 struct vec4 {
@@ -68,7 +68,7 @@ struct vec4 {
 
 Unfortunately this is UB in C++. In fact all compilers support this technique properly, and there are no errors it is interesting how it is influencing optimization of such code.
 
-For GLM SIMD, Eigen, Blaze and Mango resulted in same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
+For GLM SIMD, Eigen, Blaze and Mango resulted in the same assembly code while compiling it with MSVC. This is what we expect as probably we can't have anything better.
 
 ```assembly    
 mov         rax,qword ptr [testData]  
@@ -77,7 +77,7 @@ mulps       xmm0,xmmword ptr [rax]
 movaps      xmmword ptr [res],xmm0 
 ```
     
-Also GLM SIMD and Eigen have best code for multiply scalar test:
+Also, GLM SIMD and Eigen have the best code for multiply scalar test:
     
 ```assembly    
 mov         rax,qword ptr [testData]  
@@ -111,7 +111,7 @@ mulps       xmm0,xmm1
 movaps      xmmword ptr [res],xmm0  
 ```
     
-GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresing and won't comment on their assembly.
+GLM and Mathfu implementations weren't vectorized by the compiler and I consider them uninteresting and won't comment on their assembly.
 
 GCC didn't vectorized GLM code, for GLM SIMD and Mango produced:
 
@@ -127,9 +127,9 @@ mulps  %xmm0,%xmm1
 movaps %xmm1,(%rsp)
 ```
     
-Interesting thing is to have loop control instructions (from benchmark library) in the middle of the loop - for other implementations I didn't included them on listings as they are after part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). We will see this many times done by GCC in other tests. Usually those tests have better results than other. This reordering probably can result in returning from the measured function early and biasing the result. I didn't analyzed in detail how google benchmark library work and why this effect takes place even if I'm using the memory barriers to prevent that.
+The interesting thing is to have loop control instructions (from benchmark library) in the middle of the loop - for other implementations I didn't include them on listings as they are after the part which is doing actual work. On Travis CI where measuring time has better resolution this implementation seems to be a little better (around 0.499 ns vs 0.540 ns with version presented below for multiplication code). We will see this many times done by GCC in other tests. Usually those tests have better results than the other. This reordering probably can result in returning from the measured function early and biasing the result. I didn't analyze in detail how google benchmark library work and why this effect takes place even if I'm using the memory barriers to prevent that.
     
-Alternative assembly was produced by Eigen, Blaze and Mathfu libraries which is same as assemby produced by MSVC for Eigen and GLM SIMD:
+Alternative assembly was produced by Eigen, Blaze and Mathfu libraries which is same as assembly produced by MSVC for Eigen and GLM SIMD:
  
 ```assembly  
 mov    (%rsp),%rax
@@ -167,7 +167,8 @@ mulps       xmm1,xmm0
 movaps      xmmword ptr [res],xmm1
 ```
     
-Rest of libraries were compiled to this assembly which is better one and we already seen it:   
+The rest of the libraries were compiled to this assembly which is the better one, and we have already seen it:
+  
     
 ```assembly 
 mov         rax,qword ptr [testData]  
@@ -186,7 +187,8 @@ movaps      xmmword ptr [res],xmm0
      
 ## Compute tests results
 
-That was easy part, as we measured only very simple operations like component-wise multiplication and multiplying vector by scalar value which very easily translates to SIMD operations. Now lets test little bit more complicated expressions. 
+That was an easy part, as we measured only very simple operations like component-wise multiplication and multiplying vector by scalar value which very easily translates to SIMD operations. Now let's test a bit more complicated expressions.
+
 
 ### Compute 1 test:
 
@@ -214,7 +216,7 @@ Benchmark results:
 | Mathfu          | 1.86 ns    | 1.75 ns    | 2.38 ns    | Mathfu          | 1.25 ns   | -          | 1.24 ns   |
 | Mango           | 3.00 ns    | 1.00 ns    | 2.37 ns    | Mango           | 1.24 ns   | -          | 0.991 ns  |  
 
-Lets analyze the results see the assembly code.
+Let's analyze the results to see the assembly code.
 
 MSVC compiled code has two anomalies, Eigen and Blaze implementations which we would expect to be much better. Eigen assembly is:
 
@@ -235,7 +237,7 @@ addps       xmm1,xmm5
 movaps      xmmword ptr [res],xmm1 
 ```
 
-unfortunately I don't know why this is being so slow and Blaze:
+Unfortunately I don't know why this is being so slow and Blaze:
 
 ```assembly
 mov         rax,qword ptr [rbp-39h]  
@@ -280,7 +282,7 @@ addps       xmm1,xmm0
 movaps      xmmword ptr [rbp+27h],xmm1  
 ```
     
-It seems to be a real distaster. It seems that it has two loops where the vectors are constructed.
+It seems to be a real disaster. It seems that it has two loops where the vectors are constructed.
 
 GLM SIMD and Mathfu resulted it following code which is very similar to Eigen's, registers in some instructions are different:
 
@@ -322,7 +324,7 @@ addps       xmm1,xmm5
 movaps      xmmword ptr [res],xmm1
 ```
 
-GCC in case of this test inserted loop control instructions in the middle of the loop in four out of six times and it is harder to compare the best library in this case. GLM implementation is again not vectorized and generated worst code. Eigen and Blaze are identical and probably not best code but better than GLM. Shorter code was generated for GLM SIMD and Mathfu:
+GCC in case of this test inserted loop control instructions in the middle of the loop in four out of six times, and it is harder to compare the best library in this case. GLM implementation is again not vectorized and generated worst code. Eigen and Blaze are identical and probably not best code but better than GLM. Shorter code was generated for GLM SIMD and Mathfu:
 
 ```x86asm 
 mov    rax,QWORD PTR [rsp+0x10]
@@ -341,7 +343,7 @@ mulps  xmm3,xmm2
 movaps XMMWORD PTR [rsp],xmm3
 ```
 
-Shortest and probably best code was generated for Mango, this is one instruction less than previous one:
+The shortest and probably the best code was generated for Mango, this is one instruction less than the previous one:
 
 ```x86asm 
 mov    rax,QWORD PTR [rsp+0x10]
@@ -359,7 +361,7 @@ mulps  xmm0,xmm1
 movaps XMMWORD PTR [rsp],xmm0
 ```
 
-Clang again produces most consistent code, however best is produced for GLM library without SIMD support enabled, it is best result of all tested libraries:
+Clang again produced most consistent code, however the best is produced for GLM library without SIMD support enabled, it is the best result of all tested libraries:
 
 ```x86asm   
 mov         rax,qword ptr [testData]  
@@ -376,7 +378,7 @@ addps       xmm0,xmm1
 movaps      xmmword ptr [res],xmm0  
 ```
     
-and other version for all other libraries:
+And other version for all other libraries:
     
 ```x86asm 
 mov         rax,qword ptr [testData]  
@@ -420,7 +422,7 @@ Benchmark results:
 | Mathfu          | 1.33 ns    | 5.71 ns    | 1.19 ns    | Mathfu          | 0.744 ns  | -          | 0.422 ns  |
 | Mango           | 1.51 ns    | 1.00 ns    | 1.23 ns    | Mango           | 0.500 ns  | -          | 0.406 ns  | 
 
-Again as we see Clang is pretty stable and optimizing all libaries to similar code. In fact there were only two versions of disassembly:
+Again as we see Clang is pretty stable and optimizing all libraries to similar code. In fact there were only two versions of disassembly:
 
 ```x86asm 
 mov         rax,qword ptr [testData]  
@@ -445,7 +447,7 @@ shufps      xmm0,xmm0,0
 movaps      xmmword ptr [res],xmm0  
 ```
 
-Clang and as we will see most of other implementations understand that in fact in this case we don't need all data and in fact only two values are needed to compute the result and later this result is broadcasted to other elements of the vector. Nice!
+Clang and most of other implementations understand that, in fact in this case we don't need all data. Only two values are needed to compute the result and later this result is broadcasted to other elements of the vector. Nice!
 
 MSVC code for GLM SIMD and Eigen is even one instruction less:
 
