@@ -473,7 +473,7 @@ shufps      xmm1,xmm1,0
 movdqa      xmmword ptr [res],xmm1
 ```  
 
-Blaze assembly is much worse. Gcc in this case done worst job. Only for GLM assembly is optimal, and for other libraries it isn't as good, and for Eigen and Blaze is really awful, doing a lot of useless ```mov``` instructions. In some cases even it didn't use single instructions but vector instructions.
+Blaze assembly is much worse. GCC in this case done the worst job. Only for GLM assembly is optimal, and for other libraries it isn't as good, and for Eigen and Blaze is really awful, doing a lot of useless ```mov``` instructions. In some cases even it didn't use single instructions but vector instructions.
  
 ### 3. Compute 3 test:
 
@@ -495,9 +495,9 @@ Benchmark results:
 | Mathfu          | 1.52 ns    | 1.00 ns    | 1.02 ns    | Mathfu          | 0.593 ns  | -          | 0.416 ns  |
 | Mango           | 1.49 ns    | 1.00 ns    | 1.02 ns    | Mango           | 0.496 ns  | -          | 0.408 ns  | 
 
-Again Clang generated following code in most cases - it used common subexpression elimination optimization and uses only one addition and one multiplication instead of two:
+Again Clang generated the following code in most cases - it used common subexpression elimination optimization and uses only one addition and one multiplication instead of two:
 
-```x86asm 
+```x86asm
 mov         rax,qword ptr [testData]  
 movaps      xmm0,xmmword ptr [rax]  
 addps       xmm0,xmm0  
@@ -505,7 +505,7 @@ mulps       xmm0,xmmword ptr [rax+10h]
 movaps      xmmword ptr [res],xmm0
 ```
 
-GCC also optimized code well outside of Eigen (8 instructions) and GLM (unvectorized) in other cases it used common subexpression elimination. MSVC best disassembly was for Mathfu - the only one where it used one addition and one multiplication, second best was for GCC and Mango (one more instruction then Mathfu).
+GCC also optimized code well outside Eigen (8 instructions) and GLM (unvectorized) in other cases it used common subexpression elimination. MSVC's best disassembly was for Mathfu - the only one where it used one addition and one multiplication, second best was for GCC and Mango (one more instruction than Mathfu).
 
 ## Swizzle tests
 
@@ -546,11 +546,11 @@ Benchmark results:
 | GLM SIMD        | 3.35 ns    | 1.34 ns    | 1.96 ns    | GLM SIMD        | 1.06 ns   | -          | 1.14 ns   |
 | Mango           | 3.31 ns    | 1.34 ns    | 1.83 ns    | Mango           | 0.880 ns  | -          | 1.25 ns   | 
 
-Generally GLM non - SIMD implementation is usually much worse than SIMD / Mango which looks same, almost always for the same compiler. Only test_swizzle_1 GLM implementation resulted with better while compiling with Clang and GCC than SIMD version. GCC time results aren't worth anything again and we have to compare assembly code. And here we see the usual pattern Clang > GCC > MSVC. I won't paste all assemblies (they are available in my repo) but just will compare number of instructions. Clang has 12/14/14 and 21/11/11 instructions in assembly, GCC has 14/15/15 and 19/13/13, MSVC 24/17/17 and 31/13/13 instructions in test_swizzle_1 and test_swizzle_2 respectively.
+Generally GLM non - SIMD implementation is usually much worse than SIMD / Mango which looks the same, almost always for the same compiler. Only test_swizzle_1 GLM implementation resulted with better while compiling with Clang and GCC than SIMD version. GCC time results aren't worth anything again, and we have to compare assembly code. And here we see the usual pattern Clang > GCC > MSVC. I won't paste all assemblies (they are available in my repo) but just will compare the number of instructions. Clang has 12/14/14 and 21/11/11  assembly instructions, GCC has 14/15/15 and 19/13/13, MSVC 24/17/17 and 31/13/13 instructions for test_swizzle_1 and test_swizzle_2 respectively.
 
 ## Martix 4x4 tests
 
-For matrices I tested add and multiply operations. From 3d math graphics library perhaps most interesting operation for us is matrix multiplication. After a while of thinking maybe operation like ```transpose()``` would also interesting or specialized methods for constructing projection or view matrices would also be worth testing. I don't know if general purpose libraries like Eigen or Blaze support that out of the box.
+For matrices, I tested add and multiply operations. From 3d math graphics library perhaps the most interesting operation for us is matrix multiplication. After a while of thinking maybe operation like ```transpose()``` would also be interesting or specialized methods for constructing projection or view matrices would also be worth testing. I don't know if general purpose libraries like Eigen or Blaze support that out of the box.
 Mango library doesn't support adding matrices, so this result isn't available.
 
 1. Add test:
@@ -574,11 +574,11 @@ Benchmark results:
 | Mathfu          | 12.3 ns    | 3.17 ns    | 1.63 ns    | Mathfu          | 7.41 ns   | -          | 5.08 ns   |
 | Mango           | -          | -          | -          | Mango           | -         | -          | -         |
 
-In addition test best results for MSVC are GLM SIMD and Eigen implementations - they are vectorized and seems to be optimal. Blaze code generated loop and matrix vectors are added in a loop which isn't unrolled and it result in worse performance. GLM and Mathfu aren't vectorized and generated assembly is very long.
+In addition, test best results for MSVC are GLM SIMD and Eigen implementations - they are vectorized and seems to be optimal. Blaze code generated loop and matrix vectors are added in a loop which isn't unrolled, and it results in worse performance. GLM and Mathfu aren't vectorized and generated assembly is very long.
 
-GCC compiled Eigen, Blaze and Mathfu to this "optimal" assembly. For GLM SIMD it resulted in assembly with 12 extractps and 8 movaps instructions in addition to obvious 4 addps instrucions which are doing actual work. This code is much worse then MSVC assembly for same implementation. GLM implementation is again unvectorized and very slow.
+GCC compiled Eigen, Blaze and Mathfu to this "optimal" assembly. For GLM SIMD it resulted in assembly with 12 extractps and 8 movaps instructions in addition to obvious 4 addps instrucions which are doing actual work. This code is much worse than MSVC assembly for the same implementation. GLM implementation is again unvectorized and very slow.
 
-Clang vectorized GLM implementation but it seem that it has to align data before adding and this is reason extra few instructions. All other libraries were compiled to very similar code (same number of instructions, different order). Here I attach "optimal" assembly:
+Clang vectorized GLM implementation, but it seems that it has to align data before adding and this is reason extra few instructions. All other libraries were compiled to very similar code (same number of instructions, different order). Here I attach "optimal" assembly:
 
 ```
 mov         rax,qword ptr [testData]  
@@ -629,24 +629,24 @@ Benchmark results:
 | Mathfu          | 32.9 ns    | 43.1 ns    | 50.9 ns    | Mathfu          | 16.4 ns   | -          | 21.3 ns  |
 | Mango           | 15.2 ns    | 9.68 ns    | 15.9 ns    | Mango           | 4.30 ns   | -          | 4.74 ns  |
 
-MSVC didn't inline GLM, Blaze and Mathfu code, is unvectorized which explains the slow performance. Other are close in performance, I didn't compared them in detail, but it seems that Mango is shortest. AVX2 implementations here can use Fused-Multiply-Add instructions a lot which makes code twice shorter.
+MSVC didn't inline GLM, Blaze and Mathfu code, is unvectorized which explains the slow performance. Other are close in performance, I didn't compare them in detail, but it seems that Mango is shortest. AVX2 implementations here can use Fused-Multiply-Add instructions a lot which makes code twice shorter.
 
-When compiing by GCC worst code is generated for Mathfu and GLM (around 250 instructions). Better is GLM SIMD (over 90 instructions). Best are Eigen, Blaze and Mango - around 70 instructions.
+When compiling by GCC's worst code is generated for Mathfu and GLM (around 250 instructions). Better is GLM SIMD (over 90 instructions). Best are Eigen, Blaze and Mango - around 70 instructions.
 
-Clang worst implementation is Mathfu (200 instructions) next is GLM (100 instructions). Blaze was compiled to something with loop, code is short but executed more than one time and thus not best implementation. Again GLM SIMD, Eigen and Mango resulted in similar best performing code.
+Clang's worst implementation is Mathfu (200 instructions) next is GLM (100 instructions). Blaze was compiled to something with loop, code is short but executed more than one time and thus not the best implementation. Again GLM SIMD, Eigen and Mango resulted in similar best performing code.
 
 ## Summary
 
-I came two few conclusions after performing the tests. First - don't trust google benchmark results until you see the assembly and reason about it. Most of GCC results are very inaccurate probably because compiler reordered the code. MSVC and Clang results are comparable in that regards, that we can reason about performance from benchmark results.
+I came to few conclusions after performing the tests. First - don't trust google benchmark results until you see the assembly and reason about it. Most of the GCC results are very inaccurate probably because the compiler reordered the code. MSVC and Clang results are comparable in that regard, that we can reason about performance from benchmark results.
 
-Second - much more important then implementation of the library is to use right copmiler. Overall in most tests - especially vector tests Clang compiled almost every implementation (with exception of GLM) to same assembly. Generally best library is that compiled by Clang. Second best compiler overall is GCC, however sometimes, it had worst code.
+Second - much more important than implementation of the library is to use the right compiler. Overall in most tests - especially vector tests Clang compiled almost every implementation (with exception to GLM) to the same assembly. Generally the best library is that compiled by Clang. The second best compiler overall is GCC, however sometimes, it had worst code.
 
-Third - It seems that first place of the benchmark is taken by Eigen and GLM SIMD is usually same or very slightly worse results. Given that Eigen is not so easy to use (at least for me) GLM is better choice, also it have swizzle funcionality which is sometimes useful. Also Mango library comes with similar functionality however it is often slightly worse than first two. Sometimes it has better times on the benchmark, but I don't know how to explain that, and I don't fully trust those results. 
+Third - It seems that first place of the benchmark is taken by Eigen and GLM SIMD is usually same or very slightly worse results. Given that Eigen is not so easy to use (at least for me) GLM is a better choice, also it has swizzle funcionality which is sometimes useful. Also, Mango library comes with similar functionality however it is often slightly worse than the first two. Sometimes it has better times on the benchmark, but I don't know how to explain that, and I don't fully trust those results.
 
-Blaze and Mathfu are often much worse, for me it is quite strange that "theoretically" wo well written library such as Blaze could have such problems. But occasionally its code haven't been unrolled and we had to pay the price for loop control instructions. On the other hand Mathfu wasn't always vectorized and due to that I consider it unstable.
+Blaze and Mathfu are often much worse, for me, it is quite strange that "theoretically" wo well written library such as Blaze could have such problems. But occasionally its code haven't been unrolled, and we had to pay the price for loop control instructions. On the other hand Mathfu wasn't always vectorized and due to that I consider it unstable.
 
-Overall worst performance had (perhaps) most often used plain GLM library - out of the box implementation doesn't take advantage of the SIMD instructions. Even if Clang can vectorize it, there is worry about alignment and it has to take care of it and align the data which comes with a cost. Don't use this implementation, drop in few macros that enables SIMD instructions in this implementation. Probably you will notice slower compilation times, but if you care about runtime performance it is worth it.
+Overall worst performance had (perhaps) most often used plain GLM library - out of the box implementation doesn't take advantage of the SIMD instructions. Even if Clang can vectorize it, there is worry about alignment, and it has to take care of it and align the data which comes with a cost. Don't use this implementation, drop in few macros that enables SIMD instructions in this implementation. Probably you will notice slower compilation times, but if you care about runtime performance it is worth it.
 
 All code, results and dissassemblies are available on Github [https://github.com/Bargor/3d-math-benchmark].
 
-If you see faults in methodology of the tests or have some thoughts about it - feel free to contact me and discuss it.
+If you see faults in the methodology of the tests or have some thoughts about it - feel free to contact me and discuss it.
